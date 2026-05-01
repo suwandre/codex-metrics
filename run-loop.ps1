@@ -26,6 +26,67 @@ function Invoke-Native {
     return $output
 }
 
+function Test-WorkingTreeChanges {
+    $status = git status --porcelain --untracked-files=all
+    return [bool]$status
+}
+
+function Get-RemainingTaskCount {
+    $tasks = Get-Content -LiteralPath "TASKS.md" -ErrorAction SilentlyContinue
+    $remaining = $tasks | Where-Object { $_ -match "^\- \[ \]" }
+    return $remaining.Count
+}
+
+function Reset-CurrentTaskForRetry {
+    $lines = @(Get-Content -LiteralPath "TASKS.md")
+    $firstIncompleteIndex = -1
+
+    for ($i = 0; $i -lt $lines.Count; $i++) {
+        if ($lines[$i] -match "^\- \[ \]") {
+            $firstIncompleteIndex = $i
+            break
+        }
+    }
+
+    $startIndex = $lines.Count - 1
+
+    if ($firstIncompleteIndex -gt 0) {
+        $startIndex = $firstIncompleteIndex - 1
+    }
+
+    for ($i = $startIndex; $i -ge 0; $i--) {
+        if ($lines[$i] -match "^\- \[x\] (.+)$") {
+            $task = $Matches[1] -replace " \[REVIEW FAILED\]$", ""
+            $lines[$i] = "- [ ] $task [REVIEW FAILED]"
+            Set-Content -LiteralPath "TASKS.md" -Value $lines
+            return
+        }
+    }
+
+    throw "Could not find completed task to reset after review failure."
+}
+
+function Write-AgentOutput {
+    param(
+        [Parameter(Mandatory = $true)]
+        [object[]]$Output,
+        [Parameter(Mandatory = $true)]
+        [string]$Path
+    )
+
+    $Output | Set-Content -LiteralPath $Path
+
+    $lineCount = $Output.Count
+    if ($lineCount -le 80) {
+        Write-Host $Output
+        return
+    }
+
+    Write-Host ">> Output is $lineCount lines. Full log: $Path" -ForegroundColor DarkGray
+    Write-Host ">> Last 80 lines:" -ForegroundColor DarkGray
+    $Output | Select-Object -Last 80 | Write-Host
+}
+
 function Invoke-CodexBuild {
     param(
         [Parameter(Mandatory = $true)]
@@ -47,16 +108,21 @@ function Invoke-CodexReview {
     param(
         [Parameter(Mandatory = $true)]
         [string]$Prompt,
-        [Parameter(Mandatory = $true)]
-        [string]$Commit
+        [string]$Commit = ""
     )
 
     $args = @(
         "--model", $ReviewModel,
         "--config", "model_reasoning_effort=`"$ReviewEffort`"",
-        "review",
-        "--commit", $Commit
+        "review"
     )
+
+    if ($Commit) {
+        $args += @("--commit", $Commit)
+    }
+    else {
+        $args += @("--uncommitted")
+    }
 
     Invoke-Native -Args ($args + @($Prompt))
 }
@@ -106,10 +172,7 @@ for ($i = 1; $i -le $MaxIterations; $i++) {
     Write-Host ""
     Write-Host "-- Iteration $i ------------------------------" -ForegroundColor DarkGray
 
-    $tasks = Get-Content -LiteralPath "TASKS.md" -ErrorAction SilentlyContinue
-    $remaining = $tasks | Where-Object { $_ -match "^\- \[ \]" }
-
-    if (-not $remaining) {
+    if ((Get-RemainingTaskCount) -eq 0) {
         Write-Host ">> All tasks complete." -ForegroundColor Green
         break
     }
@@ -136,46 +199,47 @@ Run relevant checks.
 Commit with a conventional commit message.
 Mark the task complete [x] in TASKS.md only if acceptance criteria pass.
 
-If all tasks are done, output exactly: ALL COMPLETE
 Only work on ONE task per run.
 "@
 
-    Write-Host $build
-
-    if ($build -match "ALL COMPLETE") {
-        Write-Host ">> Builder reports all complete." -ForegroundColor Green
-        break
-    }
+    Write-AgentOutput -Output $build -Path ".codex-build-$i.log"
 
     $headAfterBuild = git rev-parse HEAD
+    $reviewCommit = ""
 
-    if ($headBeforeBuild -eq $headAfterBuild) {
-        throw "Builder finished without creating a commit. Stopping loop."
+    if ($headBeforeBuild -ne $headAfterBuild) {
+        $reviewCommit = $headAfterBuild
+        Write-Host ">> Reviewing commit $reviewCommit..." -ForegroundColor Magenta
+    }
+    elseif (Test-WorkingTreeChanges) {
+        Write-Host ">> No commit created. Reviewing uncommitted changes..." -ForegroundColor Magenta
+    }
+    else {
+        throw "Builder finished without a commit or working-tree changes. Stopping loop."
     }
 
-    Write-Host ">> Reviewing last commit..." -ForegroundColor Magenta
-
-    $review = Invoke-CodexReview -Commit $headAfterBuild -Prompt @"
-Review the last git commit against PRD.md and TASKS.md.
+    $review = Invoke-CodexReview -Commit $reviewCommit -Prompt @"
+Review the latest task changes against PRD.md and TASKS.md.
 
 Find the task most recently marked [x].
 Check acceptance criteria.
 Focus bugs, missed requirements, regressions, and test gaps.
 
-Output PASS or FAIL.
+First line must be exactly PASS or FAIL.
 If FAIL, give max 3 specific reasons with file paths and line numbers.
 "@
 
-    Write-Host $review
+    Write-AgentOutput -Output $review -Path ".codex-review-$i.log"
 
-    if ($review -match "\bFAIL\b") {
+    if ($review -match "(?m)^\s*FAIL\s*$") {
         $turnCount++
+        Reset-CurrentTaskForRetry
         Write-Host ""
         Write-Host ">> Review FAILED (turn $turnCount/$MaxTurns). Retrying task..." -ForegroundColor Red
         continue
     }
 
-    if ($review -notmatch "\bPASS\b") {
+    if ($review -notmatch "(?m)^\s*PASS\s*$") {
         throw "Reviewer did not output PASS or FAIL. Stopping loop."
     }
 
