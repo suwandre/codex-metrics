@@ -1,0 +1,484 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex Metrics - Live Ops</title>
+  <style>
+    :root {
+      --bg: #11110f;
+      --panel: #191a17;
+      --panel-soft: #20221d;
+      --ink: #f3efe3;
+      --muted: #aaa390;
+      --line: #333529;
+      --green: #9bd85b;
+      --teal: #55c3a5;
+      --amber: #f3b449;
+      --red: #ef6d58;
+      --cream: #e7dac2;
+    }
+
+    * {
+      box-sizing: border-box;
+    }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      background: radial-gradient(circle at top left, rgba(155, 216, 91, 0.12), transparent 30%), var(--bg);
+      color: var(--ink);
+      font-family: Inter, ui-sans-serif, system-ui, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+      letter-spacing: 0;
+    }
+
+    .page {
+      min-height: 100vh;
+      padding: 22px;
+    }
+
+    .frame {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: rgba(25, 26, 23, 0.9);
+      overflow: hidden;
+    }
+
+    header {
+      display: grid;
+      grid-template-columns: minmax(0, 1fr) auto;
+      gap: 22px;
+      padding: 22px;
+      border-bottom: 1px solid var(--line);
+    }
+
+    .eyebrow {
+      margin: 0 0 12px;
+      color: var(--green);
+      font-size: 12px;
+      font-weight: 850;
+      letter-spacing: 0.14em;
+      text-transform: uppercase;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(34px, 5vw, 70px);
+      line-height: 0.92;
+      font-weight: 860;
+      max-width: 980px;
+    }
+
+    .status-stack {
+      display: grid;
+      gap: 8px;
+      min-width: 300px;
+    }
+
+    .status {
+      display: flex;
+      justify-content: space-between;
+      gap: 16px;
+      min-height: 42px;
+      padding: 0 14px;
+      align-items: center;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      color: var(--muted);
+      font-size: 13px;
+      font-weight: 700;
+    }
+
+    .status strong {
+      color: var(--ink);
+    }
+
+    .grid {
+      display: grid;
+      gap: 12px;
+      padding: 12px;
+    }
+
+    .metrics {
+      grid-template-columns: 1.2fr 1fr 1fr 1fr;
+      padding-top: 12px;
+    }
+
+    .card {
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel);
+    }
+
+    .metric {
+      padding: 18px;
+      min-height: 140px;
+      display: grid;
+      align-content: space-between;
+    }
+
+    .label {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 850;
+      letter-spacing: 0.12em;
+      text-transform: uppercase;
+    }
+
+    .big {
+      margin-top: 20px;
+      font-size: clamp(34px, 4vw, 58px);
+      line-height: 0.95;
+      font-weight: 860;
+    }
+
+    .metric-foot {
+      margin-top: 12px;
+      display: flex;
+      justify-content: space-between;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .good {
+      color: var(--green);
+    }
+
+    .warn {
+      color: var(--amber);
+    }
+
+    .bad {
+      color: var(--red);
+    }
+
+    .main-grid {
+      grid-template-columns: minmax(0, 1.1fr) minmax(360px, 0.9fr);
+    }
+
+    .panel {
+      padding: 18px;
+    }
+
+    .panel-head {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 14px;
+      margin-bottom: 16px;
+    }
+
+    h2 {
+      margin: 0;
+      font-size: 17px;
+      line-height: 1.2;
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      min-height: 28px;
+      padding: 0 10px;
+      border: 1px solid var(--line);
+      border-radius: 999px;
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 750;
+      white-space: nowrap;
+    }
+
+    .timeline {
+      display: grid;
+      gap: 10px;
+    }
+
+    .event {
+      display: grid;
+      grid-template-columns: 72px minmax(0, 1fr) 86px 74px;
+      gap: 14px;
+      align-items: center;
+      padding: 13px;
+      border: 1px solid var(--line);
+      border-radius: 8px;
+      background: var(--panel-soft);
+      font-size: 13px;
+    }
+
+    .event strong {
+      display: block;
+      margin-bottom: 4px;
+    }
+
+    .event span,
+    .mini {
+      color: var(--muted);
+      font-size: 12px;
+      font-weight: 650;
+    }
+
+    .spark {
+      display: grid;
+      grid-template-columns: repeat(24, 1fr);
+      gap: 3px;
+      align-items: end;
+      height: 146px;
+      padding: 16px 0 4px;
+      border-top: 1px solid var(--line);
+    }
+
+    .spark i {
+      display: block;
+      min-height: 8px;
+      border-radius: 5px 5px 2px 2px;
+      background: var(--teal);
+    }
+
+    .spark i:nth-child(3n) {
+      background: var(--green);
+    }
+
+    .spark i:nth-child(5n) {
+      background: var(--amber);
+    }
+
+    .matrix {
+      display: grid;
+      gap: 10px;
+    }
+
+    .matrix-row {
+      display: grid;
+      grid-template-columns: 116px repeat(7, 1fr);
+      gap: 6px;
+      align-items: center;
+    }
+
+    .matrix-row strong {
+      font-size: 12px;
+      color: var(--cream);
+    }
+
+    .cell {
+      aspect-ratio: 1.45;
+      border-radius: 5px;
+      background: #2a2d24;
+      border: 1px solid #363a2e;
+    }
+
+    .cell.low {
+      background: rgba(85, 195, 165, 0.28);
+      border-color: rgba(85, 195, 165, 0.3);
+    }
+
+    .cell.mid {
+      background: rgba(155, 216, 91, 0.48);
+      border-color: rgba(155, 216, 91, 0.4);
+    }
+
+    .cell.hot {
+      background: rgba(243, 180, 73, 0.68);
+      border-color: rgba(243, 180, 73, 0.55);
+    }
+
+    .footer-grid {
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+
+    .stacked {
+      display: grid;
+      gap: 12px;
+    }
+
+    .usage-row {
+      display: grid;
+      grid-template-columns: 96px minmax(0, 1fr) 48px;
+      gap: 12px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .track {
+      height: 10px;
+      border-radius: 999px;
+      overflow: hidden;
+      background: #2c2f27;
+    }
+
+    .fill {
+      height: 100%;
+      border-radius: inherit;
+      background: var(--green);
+    }
+
+    .fill.teal {
+      background: var(--teal);
+    }
+
+    .fill.amber {
+      background: var(--amber);
+    }
+
+    @media (max-width: 1120px) {
+      header,
+      .metrics,
+      .main-grid,
+      .footer-grid {
+        grid-template-columns: 1fr;
+      }
+
+      .status-stack {
+        min-width: 0;
+      }
+    }
+
+    @media (max-width: 700px) {
+      .page {
+        padding: 10px;
+      }
+
+      header {
+        padding: 16px;
+      }
+
+      .event {
+        grid-template-columns: 1fr;
+      }
+
+      .matrix-row {
+        grid-template-columns: 84px repeat(7, minmax(18px, 1fr));
+      }
+    }
+  </style>
+</head>
+<body>
+  <main class="page">
+    <div class="frame">
+      <header>
+        <div>
+          <p class="eyebrow">Live Codex ops</p>
+          <h1>Realtime agent workload, limits, and token flow.</h1>
+        </div>
+        <div class="status-stack">
+          <div class="status"><span>Active model</span><strong>gpt-5.5 high</strong></div>
+          <div class="status"><span>5h window</span><strong class="warn">63% used</strong></div>
+          <div class="status"><span>Weekly window</span><strong class="good">28% used</strong></div>
+        </div>
+      </header>
+
+      <section class="grid metrics" aria-label="Live KPIs">
+        <article class="card metric">
+          <div class="label">Current session tokens</div>
+          <div class="big">592.5k</div>
+          <div class="metric-foot"><span>430.8k cached</span><span class="good">72.7%</span></div>
+        </article>
+        <article class="card metric">
+          <div class="label">Avg turn latency</div>
+          <div class="big">14.2s</div>
+          <div class="metric-foot"><span>p95 38.4s</span><span class="warn">+2.1s</span></div>
+        </article>
+        <article class="card metric">
+          <div class="label">Tool success</div>
+          <div class="big">98.1%</div>
+          <div class="metric-foot"><span>521 exits</span><span class="bad">10 failed</span></div>
+        </article>
+        <article class="card metric">
+          <div class="label">Burn rate</div>
+          <div class="big">78.9k</div>
+          <div class="metric-foot"><span>tokens / turn</span><span class="good">stable</span></div>
+        </article>
+      </section>
+
+      <section class="grid main-grid">
+        <article class="card panel">
+          <div class="panel-head">
+            <h2>Live request feed</h2>
+            <span class="chip">local JSONL events</span>
+          </div>
+          <div class="timeline">
+            <div class="event">
+              <span>22:40:31</span>
+              <div><strong>token_count</strong><span>last 79.8k tokens, context 0%, cached input 78.7k</span></div>
+              <span class="good">ok</span>
+              <span>$0.19</span>
+            </div>
+            <div class="event">
+              <span>22:39:24</span>
+              <div><strong>exec_command</strong><span>PowerShell, exit 0, 0.42s runtime</span></div>
+              <span class="good">success</span>
+              <span>0 tok</span>
+            </div>
+            <div class="event">
+              <span>22:37:53</span>
+              <div><strong>task_started</strong><span>context window 258.4k, collaboration default</span></div>
+              <span class="good">started</span>
+              <span>init</span>
+            </div>
+            <div class="event">
+              <span>21:18:09</span>
+              <div><strong>rate_limit</strong><span>5h reset 23:38, weekly reset Monday</span></div>
+              <span class="warn">limit</span>
+              <span>63%</span>
+            </div>
+          </div>
+        </article>
+
+        <article class="card panel">
+          <div class="panel-head">
+            <h2>Output throughput</h2>
+            <span class="chip">tokens per minute</span>
+          </div>
+          <div class="spark" aria-label="Throughput spark bars">
+            <i style="height:34%"></i><i style="height:46%"></i><i style="height:64%"></i><i style="height:39%"></i>
+            <i style="height:78%"></i><i style="height:42%"></i><i style="height:53%"></i><i style="height:72%"></i>
+            <i style="height:28%"></i><i style="height:36%"></i><i style="height:61%"></i><i style="height:57%"></i>
+            <i style="height:88%"></i><i style="height:47%"></i><i style="height:55%"></i><i style="height:66%"></i>
+            <i style="height:31%"></i><i style="height:44%"></i><i style="height:73%"></i><i style="height:51%"></i>
+            <i style="height:69%"></i><i style="height:43%"></i><i style="height:58%"></i><i style="height:76%"></i>
+          </div>
+          <p class="mini">Peak periods flag long context reloads and expensive reasoning bursts.</p>
+        </article>
+      </section>
+
+      <section class="grid footer-grid">
+        <article class="card panel">
+          <div class="panel-head">
+            <h2>Model mix</h2>
+            <span class="chip">sessions</span>
+          </div>
+          <div class="stacked">
+            <div class="usage-row"><strong>5.5 high</strong><div class="track"><div class="fill" style="width: 61%"></div></div><span>61%</span></div>
+            <div class="usage-row"><strong>5.5 med</strong><div class="track"><div class="fill teal" style="width: 22%"></div></div><span>22%</span></div>
+            <div class="usage-row"><strong>5.4 mini</strong><div class="track"><div class="fill amber" style="width: 12%"></div></div><span>12%</span></div>
+          </div>
+        </article>
+
+        <article class="card panel">
+          <div class="panel-head">
+            <h2>Cost split</h2>
+            <span class="chip">estimated</span>
+          </div>
+          <div class="stacked">
+            <div class="usage-row"><strong>input</strong><div class="track"><div class="fill teal" style="width: 48%"></div></div><span>$19</span></div>
+            <div class="usage-row"><strong>cached</strong><div class="track"><div class="fill" style="width: 18%"></div></div><span>$7</span></div>
+            <div class="usage-row"><strong>output</strong><div class="track"><div class="fill amber" style="width: 34%"></div></div><span>$14</span></div>
+          </div>
+        </article>
+
+        <article class="card panel">
+          <div class="panel-head">
+            <h2>Usage heatmap</h2>
+            <span class="chip">7 days</span>
+          </div>
+          <div class="matrix" aria-label="Weekly usage heatmap">
+            <div class="matrix-row"><strong>tokens</strong><span class="cell low"></span><span class="cell mid"></span><span class="cell low"></span><span class="cell hot"></span><span class="cell mid"></span><span class="cell low"></span><span class="cell mid"></span></div>
+            <div class="matrix-row"><strong>latency</strong><span class="cell"></span><span class="cell low"></span><span class="cell mid"></span><span class="cell hot"></span><span class="cell low"></span><span class="cell"></span><span class="cell mid"></span></div>
+            <div class="matrix-row"><strong>errors</strong><span class="cell"></span><span class="cell"></span><span class="cell low"></span><span class="cell"></span><span class="cell low"></span><span class="cell"></span><span class="cell"></span></div>
+          </div>
+        </article>
+      </section>
+    </div>
+  </main>
+</body>
+</html>
