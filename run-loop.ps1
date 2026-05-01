@@ -119,12 +119,25 @@ function Invoke-CodexReview {
 
     if ($Commit) {
         $args += @("--commit", $Commit)
+        Invoke-Native -Args ($args + @($Prompt))
     }
     else {
-        $args += @("--uncommitted")
-    }
+        $args = @(
+            "--model", $ReviewModel,
+            "--config", "model_reasoning_effort=`"$ReviewEffort`"",
+            "--sandbox", "read-only",
+            "--ask-for-approval", "never",
+            "exec"
+        )
 
-    Invoke-Native -Args ($args + @($Prompt))
+        $uncommittedPrompt = @"
+$Prompt
+
+Review the current uncommitted working tree changes. Do not edit files. Do not run destructive commands.
+"@
+
+        Invoke-Native -Args ($args + @($uncommittedPrompt))
+    }
 }
 
 if (-not (Test-Path -LiteralPath "PRD.md")) {
