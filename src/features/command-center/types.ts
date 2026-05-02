@@ -55,6 +55,7 @@ export type FilterPill = {
 export type CommandCenterData = {
   title: string;
   subtitle: string;
+  refreshStatus: string;
   navItems: NavItem[];
   sideNote: string;
   filters: FilterPill[];

@@ -4,6 +4,7 @@ export const commandCenterData = {
   title: "Codex usage command center",
   subtitle:
     "Token burn, model mix, rolling limits, session health, and estimated spend in one operator-grade dashboard.",
+  refreshStatus: "Static mock data. Generated metrics poll every 3s in the live dashboard.",
   navItems: [
     { label: "Overview", href: "#overview", order: "01", active: true },
     { label: "Tokens", href: "#tokens", order: "02" },

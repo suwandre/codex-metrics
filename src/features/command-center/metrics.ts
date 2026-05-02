@@ -45,20 +45,30 @@ export function isGeneratedMetricsFile(value: unknown): value is GeneratedMetric
   );
 }
 
-export function toCommandCenterData(file: GeneratedMetricsFile): CommandCenterData {
+type CommandCenterDataOptions = {
+  refreshStatus?: string;
+};
+
+export function toCommandCenterData(
+  file: GeneratedMetricsFile,
+  options: CommandCenterDataOptions = {},
+): CommandCenterData {
   const metrics = file.metrics;
   const totals = metrics.totals;
   const hasRecords = file.ingestion.recordCount > 0;
+  const updatedAt = `Updated ${formatTime(file.generatedAt)}. Polling every 3s.`;
 
   return {
     title: "Codex usage command center",
     subtitle: hasRecords
       ? `Generated ${formatTimestamp(file.generatedAt)} from local Codex JSONL.`
       : "No local Codex session records found. Generate metrics after Codex has written sessions.",
+    refreshStatus: options.refreshStatus ?? updatedAt,
     navItems,
     sideNote: toSideNote(file),
     filters: [
-      { label: hasRecords ? "Local metrics" : "Empty metrics", live: hasRecords },
+      { label: hasRecords ? "Live refresh" : "Empty metrics", live: hasRecords },
+      { label: "3s polling" },
       { label: `${file.ingestion.fileCount} files` },
       { label: `${file.ingestion.recordCount} records` },
     ],
@@ -251,4 +261,18 @@ function formatTimestamp(value: string) {
   }
 
   return date.toISOString().replace("T", " ").slice(0, 16);
+}
+
+function formatTime(value: string) {
+  const date = new Date(value);
+
+  if (Number.isNaN(date.getTime())) {
+    return value;
+  }
+
+  return date.toLocaleTimeString([], {
+    hour: "2-digit",
+    minute: "2-digit",
+    second: "2-digit",
+  });
 }

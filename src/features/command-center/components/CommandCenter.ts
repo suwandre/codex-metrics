@@ -16,6 +16,7 @@ export function renderCommandCenter(data: CommandCenterData): string {
         ${renderTopbar({
           title: data.title,
           subtitle: data.subtitle,
+          refreshStatus: data.refreshStatus,
           filters: data.filters,
         })}
 

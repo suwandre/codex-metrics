@@ -6,6 +6,7 @@
     "dev": "vite --host 127.0.0.1",
     "build": "tsc --noEmit && vite build",
     "metrics:generate": "bun run tools/generate-metrics.ts",
+    "metrics:watch": "bun run tools/watch-metrics.ts",
     "typecheck": "tsc --noEmit",
     "lint": "biome lint src",
     "biome": "biome check src package.json tsconfig.json biome.json",

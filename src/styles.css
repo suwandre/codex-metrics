@@ -134,6 +134,13 @@ h1 {
   font-size: 15px;
 }
 
+.refresh-status {
+  margin: 10px 0 0;
+  color: var(--green);
+  font-size: 12px;
+  font-weight: 750;
+}
+
 .toolbar {
   display: flex;
   flex-wrap: wrap;

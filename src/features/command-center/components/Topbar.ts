@@ -4,15 +4,17 @@ import { escapeHtml } from "./rendering";
 type TopbarProps = {
   title: string;
   subtitle: string;
+  refreshStatus: string;
   filters: FilterPill[];
 };
 
-export function renderTopbar({ title, subtitle, filters }: TopbarProps): string {
+export function renderTopbar({ title, subtitle, refreshStatus, filters }: TopbarProps): string {
   return `
     <header class="topbar">
       <div>
         <h1>${escapeHtml(title)}</h1>
         <p class="subhead">${escapeHtml(subtitle)}</p>
+        <p class="refresh-status" id="refresh-status" aria-live="polite">${escapeHtml(refreshStatus)}</p>
       </div>
       <div class="toolbar" aria-label="Filters">
         ${filters.map(renderFilterPill).join("")}

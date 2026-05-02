@@ -21,10 +21,18 @@ bun run metrics:generate
 
 This reads local `rollout-*.jsonl` files and writes `public/metrics.json`. The generated file is ignored by git.
 
+For live local updates, run the watcher in a separate terminal:
+
+```bash
+bun run metrics:watch
+```
+
+The watcher regenerates `public/metrics.json` on Codex session file changes, debounced by 500ms, with a 10 second fallback refresh. The dashboard polls `/metrics.json` every 3 seconds and rerenders only when the generated timestamp changes.
+
 ## Run Dashboard
 
 ```bash
-bun run metrics:generate
+bun run metrics:watch
 bun run dev
 ```
 

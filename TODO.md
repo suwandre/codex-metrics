@@ -50,3 +50,16 @@ Agent loop format:
   - Acceptance:
     - Fresh checkout has clear setup/run path.
     - Verification commands pass.
+
+- [x] TASK-007: Add live metrics refresh
+  - Add `metrics:watch` script that watches local Codex session files and regenerates `public/metrics.json`.
+  - Debounce rapid file changes to avoid excessive parsing.
+  - Add a fallback interval regeneration.
+  - Update frontend to poll `/metrics.json` every 3 seconds.
+  - Rerender only when `generatedAt` changes.
+  - Show last updated state in the dashboard topbar.
+  - Keep previous dashboard data visible if refresh fails.
+  - Acceptance:
+    - New Codex session events appear in dashboard after refresh without restarting Vite.
+    - Polling does not spam rerenders when data is unchanged.
+    - `bun run verify` passes.
