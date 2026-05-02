@@ -23,7 +23,7 @@ Agent loop format:
     - Desktop and mobile layouts remain coherent.
     - Visual language follows `mockups/01-command-center.html`.
 
-- [ ] TASK-003: Implement local Codex JSONL ingestion
+- [x] TASK-003: Implement local Codex JSONL ingestion
   - Read `%USERPROFILE%\.codex\sessions\**\rollout-*.jsonl`.
   - Parse `session_meta`, `task_started`, `token_count`, `exec_command_end`, tool call, and web search events.
   - Acceptance:

@@ -8,6 +8,7 @@
     "typecheck": "tsc --noEmit",
     "lint": "biome lint src",
     "biome": "biome check src package.json tsconfig.json biome.json",
+    "test": "bun test",
     "agent:loop": "bun run tools/agent-loop.ts",
     "agent:loop:dry": "bun run tools/agent-loop.ts -- --dry-run"
   },
