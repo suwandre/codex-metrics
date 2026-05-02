@@ -16,7 +16,7 @@ Agent loop format:
     - First screen matches command-center layout direction.
     - No mockup files deleted.
 
-- [ ] TASK-002: Port command center UI into components
+- [x] TASK-002: Port command center UI into components
   - Build sidebar, topbar, KPI cards, daily token burn, limit windows, recent sessions, and model usage sections.
   - Keep responsive behavior from the mockup.
   - Acceptance:
