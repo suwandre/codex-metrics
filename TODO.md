@@ -44,7 +44,7 @@ Agent loop format:
     - Dashboard works with real metrics file.
     - Dashboard has sensible empty/loading/error states.
 
-- [ ] TASK-006: Add production verification flow
+- [x] TASK-006: Add production verification flow
   - Ensure build, typecheck, lint, biome, and tests are documented and runnable.
   - Add README usage for data generation and dashboard startup.
   - Acceptance:
