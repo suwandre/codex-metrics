@@ -1,0 +1,9 @@
+{
+  "name": "codex-metrics",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "agent:loop": "bun run tools/agent-loop.ts",
+    "agent:loop:dry": "bun run tools/agent-loop.ts -- --dry-run"
+  }
+}
