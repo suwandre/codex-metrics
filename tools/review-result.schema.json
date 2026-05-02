@@ -16,17 +16,17 @@
       "items": {
         "type": "object",
         "additionalProperties": false,
-        "required": ["severity", "issue", "fix"],
+        "required": ["severity", "file", "line", "issue", "fix"],
         "properties": {
           "severity": {
             "type": "string",
             "enum": ["blocker", "major", "minor"]
           },
           "file": {
-            "type": "string"
+            "type": ["string", "null"]
           },
           "line": {
-            "type": "integer",
+            "type": ["integer", "null"],
             "minimum": 1
           },
           "issue": {

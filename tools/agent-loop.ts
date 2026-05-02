@@ -5,10 +5,12 @@ import { dirname, join, resolve } from "node:path";
 type AgentRole = "builder" | "reviewer" | "repair";
 
 type CliOptions = {
+  commit: boolean;
   dryRun: boolean;
   maxRepairs: number;
   maxTasks: number;
   model?: string;
+  push: boolean;
   reviewModel?: string;
   todoPath: string;
 };
@@ -22,8 +24,8 @@ type Task = {
 
 type ReviewIssue = {
   severity: "blocker" | "major" | "minor";
-  file?: string;
-  line?: number;
+  file: string | null;
+  line: number | null;
   issue: string;
   fix: string;
 };
@@ -92,14 +94,24 @@ async function main() {
     writeReviewResult(task, review, "passed");
     markTaskDone(todoPath, task);
     console.log(`${task.id} marked complete.`);
+
+    if (options.commit) {
+      await commitTask(task);
+    }
+
+    if (options.push) {
+      await pushCurrentBranch();
+    }
   }
 }
 
 function parseArgs(args: string[]): CliOptions {
   const parsed: CliOptions = {
+    commit: true,
     dryRun: false,
     maxRepairs: 2,
     maxTasks: 1,
+    push: true,
     todoPath: defaultTodoPath,
   };
 
@@ -108,6 +120,17 @@ function parseArgs(args: string[]): CliOptions {
 
     if (arg === "--dry-run") {
       parsed.dryRun = true;
+      continue;
+    }
+
+    if (arg === "--no-commit") {
+      parsed.commit = false;
+      parsed.push = false;
+      continue;
+    }
+
+    if (arg === "--no-push") {
+      parsed.push = false;
       continue;
     }
 
@@ -187,6 +210,8 @@ Options:
   --max-repairs <count> Repair attempts before failing. Default: 2
   --model <model>       Codex model for builder and repair
   --review-model <model> Codex model for reviewer
+  --no-commit           Do not commit completed tasks
+  --no-push             Commit completed tasks but do not push
   --dry-run             Show first selected task without spawning agents
 `);
 }
@@ -243,6 +268,9 @@ Rules:
 - Follow project instructions from AGENTS.md and .codex/rules.
 - Do not mark TODO.md complete. The orchestrator does that after review.
 - Do not commit.
+- Do not leave long-running dev servers or watchers attached in the foreground. Use short smoke tests, or tmux if a server must stay up.
+- Do not run bun run dev in this non-interactive loop. Verify with bun run typecheck, bun run lint, bun run biome, and bun run build.
+- Do not run Invoke-WebRequest, iwr, curl, netstat, tasklist, wmic, Get-NetTCPConnection, or Stop-Process.
 - If JavaScript or TypeScript files change, run available verification commands: typecheck, lint, biome, tests, build.
 - Final response must include summary, files changed, and verification run.`;
 
@@ -265,10 +293,13 @@ Review only for this task. Return "lgtm" only when:
 - No obvious bugs, regressions, missing states, or missing verification remain.
 
 The worktree may include earlier completed tasks. Do not fail this task for unrelated earlier changes.
+Do not start dev servers, stop processes, inspect ports, or run HTTP smoke tests. Specifically avoid bun run dev, Invoke-WebRequest, iwr, curl, netstat, tasklist, wmic, Get-NetTCPConnection, and Stop-Process.
+If you run commands, use only short package checks like bun run typecheck, bun run lint, bun run biome, and bun run build.
 If changes are needed, list concrete fix instructions.
 Return JSON only matching the provided schema.`;
 
   const resultPath = await runCodex("reviewer", task, prompt, {
+    acceptLastMessageOnError: true,
     attempt,
     outputSchema: reviewSchemaPath,
     sandbox: "read-only",
@@ -298,6 +329,9 @@ Rules:
 - Preserve existing uncommitted work from earlier completed tasks.
 - Do not mark TODO.md complete.
 - Do not commit.
+- Do not leave long-running dev servers or watchers attached in the foreground. Use short smoke tests, or tmux if a server must stay up.
+- Do not run bun run dev in this non-interactive loop. Verify with bun run typecheck, bun run lint, bun run biome, and bun run build.
+- Do not run Invoke-WebRequest, iwr, curl, netstat, tasklist, wmic, Get-NetTCPConnection, or Stop-Process.
 - Run relevant verification after changes.
 - Final response must include summary, files changed, and verification run.`;
 
@@ -326,6 +360,7 @@ async function runCodex(
   task: Task,
   prompt: string,
   settings: {
+    acceptLastMessageOnError?: boolean;
     attempt?: number;
     model?: string;
     outputLastMessage?: boolean;
@@ -338,13 +373,13 @@ async function runCodex(
   const logPath = join(runDir, `${baseName}.log`);
   const lastMessagePath = join(runDir, `${baseName}.last.md`);
   const args = [
+    "-a",
+    "never",
     "exec",
     "-C",
     repoRoot,
     "-s",
     settings.sandbox,
-    "-a",
-    "never",
   ];
   const model = settings.model ?? options.model;
 
@@ -364,19 +399,27 @@ async function runCodex(
 
   console.log(`Running ${role}${attemptSuffix} agent...`);
 
-  await spawnCodex(args, prompt, logPath);
+  const result = await spawnCodex(args, prompt, logPath);
 
   if (settings.outputLastMessage && !existsSync(lastMessagePath)) {
     throw new Error(`${role} did not write final message: ${lastMessagePath}`);
   }
 
+  if (result.code !== 0 && !settings.acceptLastMessageOnError) {
+    throw new Error(`codex ${args[0]} failed with exit code ${result.code}. Log: ${logPath}`);
+  }
+
+  if (result.code !== 0 && settings.acceptLastMessageOnError) {
+    console.warn(`${role} exited ${result.code}, but final message exists. Continuing. Log: ${logPath}`);
+  }
+
   return lastMessagePath;
 }
 
-async function spawnCodex(args: string[], prompt: string, logPath: string): Promise<void> {
+async function spawnCodex(args: string[], prompt: string, logPath: string): Promise<{ code: number }> {
   mkdirSync(dirname(logPath), { recursive: true });
 
-  await new Promise<void>((resolvePromise, reject) => {
+  return await new Promise<{ code: number }>((resolvePromise, reject) => {
     const child = spawn(codexCommand, args, {
       cwd: repoRoot,
       stdio: ["pipe", "pipe", "pipe"],
@@ -399,13 +442,7 @@ async function spawnCodex(args: string[], prompt: string, logPath: string): Prom
 
     child.on("close", (code) => {
       writeFileSync(logPath, logChunks.join(""), "utf8");
-
-      if (code === 0) {
-        resolvePromise();
-        return;
-      }
-
-      reject(new Error(`codex ${args[0]} failed with exit code ${code}. Log: ${logPath}`));
+      resolvePromise({ code: code ?? 1 });
     });
 
     child.stdin.end(prompt);
@@ -467,8 +504,8 @@ function isReviewIssue(value: unknown): value is ReviewIssue {
 
   const issue = value as ReviewIssue;
   const validSeverity = issue.severity === "blocker" || issue.severity === "major" || issue.severity === "minor";
-  const validFile = issue.file === undefined || typeof issue.file === "string";
-  const validLine = issue.line === undefined || Number.isInteger(issue.line);
+  const validFile = issue.file === null || typeof issue.file === "string";
+  const validLine = issue.line === null || Number.isInteger(issue.line);
 
   return validSeverity && validFile && validLine && typeof issue.issue === "string" && typeof issue.fix === "string";
 }
@@ -489,4 +526,75 @@ function markTaskDone(todoPath: string, task: Task) {
 
   lines[task.lineIndex] = line.replace("- [ ]", "- [x]");
   writeFileSync(todoPath, lines.join("\n"), "utf8");
+}
+
+async function commitTask(task: Task) {
+  const status = await runProcess("git", ["status", "--porcelain"]);
+
+  if (!status.stdout.trim()) {
+    console.log("No changes to commit.");
+    return;
+  }
+
+  await runProcess("git", ["add", "-A"], { stream: true });
+  await runProcess("git", ["commit", "-m", `${task.id}: ${task.title}`], { stream: true });
+  console.log(`${task.id} committed.`);
+}
+
+async function pushCurrentBranch() {
+  const branch = (await runProcess("git", ["branch", "--show-current"])).stdout.trim();
+
+  if (!branch) {
+    throw new Error("Cannot push: detached HEAD or no current branch.");
+  }
+
+  await runProcess("git", ["push", "origin", branch], { stream: true });
+  console.log(`Pushed ${branch} to origin.`);
+}
+
+async function runProcess(
+  command: string,
+  args: string[],
+  options: { stream?: boolean } = {},
+): Promise<{ stdout: string; stderr: string }> {
+  return await new Promise((resolvePromise, reject) => {
+    const child = spawn(command, args, {
+      cwd: repoRoot,
+      stdio: ["ignore", "pipe", "pipe"],
+    });
+    const stdoutChunks: string[] = [];
+    const stderrChunks: string[] = [];
+
+    child.stdout.on("data", (chunk: Buffer) => {
+      const text = chunk.toString();
+      stdoutChunks.push(text);
+
+      if (options.stream) {
+        process.stdout.write(text);
+      }
+    });
+
+    child.stderr.on("data", (chunk: Buffer) => {
+      const text = chunk.toString();
+      stderrChunks.push(text);
+
+      if (options.stream) {
+        process.stderr.write(text);
+      }
+    });
+
+    child.on("error", reject);
+
+    child.on("close", (code) => {
+      const stdout = stdoutChunks.join("");
+      const stderr = stderrChunks.join("");
+
+      if (code === 0) {
+        resolvePromise({ stdout, stderr });
+        return;
+      }
+
+      reject(new Error(`${command} ${args.join(" ")} failed with exit code ${code}\n${stderr}`));
+    });
+  });
 }

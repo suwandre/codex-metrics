@@ -3,7 +3,17 @@
   "private": true,
   "type": "module",
   "scripts": {
+    "dev": "vite --host 127.0.0.1",
+    "build": "tsc --noEmit && vite build",
+    "typecheck": "tsc --noEmit",
+    "lint": "biome lint src",
+    "biome": "biome check src package.json tsconfig.json biome.json",
     "agent:loop": "bun run tools/agent-loop.ts",
     "agent:loop:dry": "bun run tools/agent-loop.ts -- --dry-run"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "^2.4.14",
+    "typescript": "^6.0.3",
+    "vite": "^8.0.10"
   }
 }

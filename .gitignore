@@ -5,3 +5,4 @@ dist
 public/metrics.json
 *.log
 .agent-runs/
+.vite/

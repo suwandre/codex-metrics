@@ -7,7 +7,7 @@ Agent loop format:
 - The loop picks the first unchecked task, runs builder, then reviewer.
 - The loop marks a task complete only after reviewer returns `lgtm`.
 
-- [ ] TASK-001: Scaffold production dashboard app
+- [x] TASK-001: Scaffold production dashboard app
   - Create a Bun-friendly TypeScript frontend app.
   - Preserve `mockups/01-command-center.html` as design source.
   - Add scripts for `dev`, `build`, `typecheck`, `lint`, and `biome` where practical.
