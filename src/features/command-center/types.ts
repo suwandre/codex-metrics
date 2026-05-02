@@ -22,7 +22,7 @@ export type LimitWindow = {
   status: LimitWindowStatus;
 };
 
-export type SessionStatus = "live" | "ok" | "retry";
+export type SessionStatus = "live" | "ok" | "retry" | "unknown";
 
 export type Session = {
   name: string;

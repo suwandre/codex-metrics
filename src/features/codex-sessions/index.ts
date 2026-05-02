@@ -1,4 +1,5 @@
 export type {
+  AggregatedDailyTokenBurn,
   AggregatedLatency,
   AggregatedModelMixItem,
   AggregatedNumber,

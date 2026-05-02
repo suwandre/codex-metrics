@@ -13,7 +13,11 @@ export function renderModelUsage({ modelUsage }: ModelUsageProps): string {
         <span class="source">session meta</span>
       </div>
       <div class="model-list">
-        ${modelUsage.map(renderModelUsageRow).join("")}
+        ${
+          modelUsage.length > 0
+            ? modelUsage.map(renderModelUsageRow).join("")
+            : '<div class="empty-state">No model metadata found in local sessions.</div>'
+        }
       </div>
     </article>
   `;

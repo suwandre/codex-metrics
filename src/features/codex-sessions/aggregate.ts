@@ -32,6 +32,17 @@ export type AggregatedModelMixItem = {
   sourceLabel: string;
 };
 
+export type AggregatedDailyTokenBurn = {
+  date: string;
+  day: string;
+  inputTokens: number;
+  cachedInputTokens: number;
+  outputTokens: number;
+  totalTokens: number;
+  sourceKind: AggregatedValueKind;
+  sourceLabel: string;
+};
+
 export type AggregatedRecentSession = {
   sessionId: string;
   name: string;
@@ -87,6 +98,7 @@ export type AggregatedThroughput = {
 export type CodexMetricsAggregation = {
   sourceLabels: Record<AggregatedValueKind, string>;
   totals: AggregatedTokenTotals;
+  dailyTokenBurn: AggregatedDailyTokenBurn[];
   modelMix: AggregatedModelMixItem[];
   recentSessions: AggregatedRecentSession[];
   rateLimitWindows: AggregatedRateLimitWindow[];
@@ -151,6 +163,7 @@ export function aggregateCodexMetrics(
   return {
     sourceLabels,
     totals: toAggregatedTokenTotals(totals),
+    dailyTokenBurn: toDailyTokenBurn(usageSamples),
     modelMix: toModelMix(sessions),
     recentSessions: toRecentSessions(sessions, recentSessionLimit),
     rateLimitWindows,
@@ -486,6 +499,56 @@ function toModelMix(sessions: Map<string, SessionAccumulator>) {
     .sort((left, right) => right.share - left.share || left.model.localeCompare(right.model));
 }
 
+function toDailyTokenBurn(samples: readonly UsageSample[]): AggregatedDailyTokenBurn[] {
+  const timestamps = samples
+    .map((sample) => sample.timestampMs)
+    .filter((timestamp): timestamp is number => timestamp !== null);
+
+  if (timestamps.length === 0) {
+    return [];
+  }
+
+  const latestDayMs = startOfUtcDay(Math.max(...timestamps));
+  const firstDayMs = latestDayMs - 6 * dayMs;
+  const dailyTotals = new Map<string, AggregatedDailyTokenBurn>();
+
+  for (let index = 0; index < 7; index += 1) {
+    const dayTimestampMs = firstDayMs + index * dayMs;
+    const date = formatDate(dayTimestampMs);
+
+    dailyTotals.set(date, {
+      date,
+      day: formatDay(dayTimestampMs),
+      inputTokens: 0,
+      cachedInputTokens: 0,
+      outputTokens: 0,
+      totalTokens: 0,
+      sourceKind: "real",
+      sourceLabel: sourceLabels.real,
+    });
+  }
+
+  for (const sample of samples) {
+    if (sample.timestampMs === null) {
+      continue;
+    }
+
+    const date = formatDate(sample.timestampMs);
+    const day = dailyTotals.get(date);
+
+    if (!day) {
+      continue;
+    }
+
+    day.inputTokens += sample.usage.inputTokens;
+    day.cachedInputTokens += sample.usage.cachedInputTokens;
+    day.outputTokens += sample.usage.outputTokens;
+    day.totalTokens += sample.usage.totalTokens;
+  }
+
+  return [...dailyTotals.values()];
+}
+
 function toRecentSessions(
   sessions: Map<string, SessionAccumulator>,
   limit: number,
@@ -608,6 +671,23 @@ function parseTimestampMs(value: string | null) {
 
 function formatTimestamp(timestampMs: number | null) {
   return timestampMs === null ? null : new Date(timestampMs).toISOString();
+}
+
+const dayMs = 86_400_000;
+const dayLabels = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"] as const;
+
+function startOfUtcDay(timestampMs: number) {
+  const date = new Date(timestampMs);
+
+  return Date.UTC(date.getUTCFullYear(), date.getUTCMonth(), date.getUTCDate());
+}
+
+function formatDate(timestampMs: number) {
+  return new Date(startOfUtcDay(timestampMs)).toISOString().slice(0, 10);
+}
+
+function formatDay(timestampMs: number) {
+  return dayLabels[new Date(timestampMs).getUTCDay()] ?? "";
 }
 
 function formatTime(timestampMs: number | null) {

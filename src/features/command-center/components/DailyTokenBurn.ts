@@ -6,11 +6,23 @@ type DailyTokenBurnProps = {
 };
 
 export function renderDailyTokenBurn({ burnBars }: DailyTokenBurnProps): string {
+  if (burnBars.length === 0) {
+    return `
+      <article class="card panel">
+        <div class="panel-head">
+          <h2>Daily token burn</h2>
+          <span class="source">Session token events</span>
+        </div>
+        <div class="empty-state">No token events found in local Codex sessions.</div>
+      </article>
+    `;
+  }
+
   return `
     <article class="card panel">
       <div class="panel-head">
         <h2>Daily token burn</h2>
-        <span class="source">Input / cached / output</span>
+        <span class="source">Session token events</span>
       </div>
       <div class="chart" aria-label="Daily token chart">
         <div class="y-axis"><span>3.0M</span><span>2.0M</span><span>1.0M</span><span>0</span></div>

@@ -37,7 +37,7 @@ Agent loop format:
     - Aggregation has focused tests.
     - Empty data produces safe zero-state output.
 
-- [ ] TASK-005: Wire dashboard to generated metrics
+- [x] TASK-005: Wire dashboard to generated metrics
   - Generate `public/metrics.json` from local Codex session data.
   - Load dashboard data from generated metrics.
   - Acceptance:

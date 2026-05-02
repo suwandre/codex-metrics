@@ -108,6 +108,78 @@ describe("Codex metrics aggregation", () => {
     });
     expect(metrics.totals.cachedInputTokens.value).toBe(50);
     expect(metrics.totals.outputTokens.value).toBe(55);
+    expect(metrics.dailyTokenBurn).toEqual([
+      {
+        date: "2026-04-26",
+        day: "Sun",
+        inputTokens: 0,
+        cachedInputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        sourceKind: "real",
+        sourceLabel: "real",
+      },
+      {
+        date: "2026-04-27",
+        day: "Mon",
+        inputTokens: 0,
+        cachedInputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        sourceKind: "real",
+        sourceLabel: "real",
+      },
+      {
+        date: "2026-04-28",
+        day: "Tue",
+        inputTokens: 0,
+        cachedInputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        sourceKind: "real",
+        sourceLabel: "real",
+      },
+      {
+        date: "2026-04-29",
+        day: "Wed",
+        inputTokens: 0,
+        cachedInputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        sourceKind: "real",
+        sourceLabel: "real",
+      },
+      {
+        date: "2026-04-30",
+        day: "Thu",
+        inputTokens: 0,
+        cachedInputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        sourceKind: "real",
+        sourceLabel: "real",
+      },
+      {
+        date: "2026-05-01",
+        day: "Fri",
+        inputTokens: 0,
+        cachedInputTokens: 0,
+        outputTokens: 0,
+        totalTokens: 0,
+        sourceKind: "real",
+        sourceLabel: "real",
+      },
+      {
+        date: "2026-05-02",
+        day: "Sat",
+        inputTokens: 230,
+        cachedInputTokens: 50,
+        outputTokens: 55,
+        totalTokens: 285,
+        sourceKind: "real",
+        sourceLabel: "real",
+      },
+    ]);
     expect(metrics.modelMix).toHaveLength(2);
     const firstModel = metrics.modelMix[0];
     const secondModel = metrics.modelMix[1];
@@ -197,6 +269,7 @@ describe("Codex metrics aggregation", () => {
     expect(metrics.totals.totalTokens.value).toBe(0);
     expect(metrics.totals.cachedInputTokens.value).toBe(0);
     expect(metrics.totals.outputTokens.value).toBe(0);
+    expect(metrics.dailyTokenBurn).toEqual([]);
     expect(metrics.modelMix).toEqual([]);
     expect(metrics.recentSessions).toEqual([]);
     expect(metrics.rateLimitWindows).toEqual([]);

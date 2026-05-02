@@ -24,11 +24,19 @@ export function renderRecentSessions({ sessions }: RecentSessionsProps): string 
             </tr>
           </thead>
           <tbody>
-            ${sessions.map(renderSessionRow).join("")}
+            ${sessions.length > 0 ? sessions.map(renderSessionRow).join("") : renderEmptyRow()}
           </tbody>
         </table>
       </div>
     </article>
+  `;
+}
+
+function renderEmptyRow(): string {
+  return `
+    <tr class="empty-row">
+      <td colspan="5">No Codex sessions found in generated metrics.</td>
+    </tr>
   `;
 }
 

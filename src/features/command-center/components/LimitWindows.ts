@@ -13,7 +13,11 @@ export function renderLimitWindows({ limitWindows }: LimitWindowsProps): string 
         <span class="source">Codex rate limits</span>
       </div>
       <div class="limits">
-        ${limitWindows.map(renderLimitWindow).join("")}
+        ${
+          limitWindows.length > 0
+            ? limitWindows.map(renderLimitWindow).join("")
+            : '<div class="empty-state">No rate-limit events found in local sessions.</div>'
+        }
       </div>
     </article>
   `;
