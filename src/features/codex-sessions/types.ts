@@ -23,6 +23,7 @@ export type CodexSessionMetaRecord = {
   originator: string | null;
   cliVersion: string | null;
   sourceName: string | null;
+  model: string | null;
   modelProvider: string | null;
   git: CodexGitMetadata | null;
 };

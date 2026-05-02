@@ -1,3 +1,16 @@
+export type {
+  AggregatedLatency,
+  AggregatedModelMixItem,
+  AggregatedNumber,
+  AggregatedRateLimitWindow,
+  AggregatedRecentSession,
+  AggregatedSuccessRate,
+  AggregatedThroughput,
+  AggregatedTokenTotals,
+  AggregatedValueKind,
+  CodexMetricsAggregation,
+} from "./aggregate";
+export { aggregateCodexMetrics } from "./aggregate";
 export { readLocalCodexSessions, resolveLocalCodexSessionsRoot } from "./local";
 export { parseCodexJsonl } from "./parser";
 export type {

@@ -30,7 +30,7 @@ Agent loop format:
     - Parser tolerates malformed JSONL lines.
     - Parser exposes typed records for aggregation.
 
-- [ ] TASK-004: Add metrics aggregation
+- [x] TASK-004: Add metrics aggregation
   - Compute total tokens, cached input tokens, output tokens, model mix, recent sessions, rate-limit windows, success rate, latency, and throughput.
   - Use clear labels for real, derived, and estimated values.
   - Acceptance:

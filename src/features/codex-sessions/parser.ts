@@ -154,6 +154,11 @@ function parseSessionMeta(
     originator: stringOrNull(payload.originator),
     cliVersion: stringOrNull(payload.cli_version),
     sourceName: stringOrNull(payload.source),
+    model:
+      stringOrNull(payload.model) ??
+      stringOrNull(payload.model_slug) ??
+      stringOrNull(payload.model_id) ??
+      stringOrNull(payload.model_name),
     modelProvider: stringOrNull(payload.model_provider),
     git: parseGit(payload.git),
   };
