@@ -10,6 +10,7 @@ export type BurnBarTone = "input" | "output";
 export type BurnBar = {
   day: string;
   height: number;
+  totalTokens: number;
   tone: BurnBarTone;
 };
 

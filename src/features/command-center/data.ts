@@ -52,13 +52,13 @@ export const commandCenterData = {
     },
   ],
   burnBars: [
-    { day: "Mon", height: 46, tone: "input" },
-    { day: "Tue", height: 63, tone: "input" },
-    { day: "Wed", height: 31, tone: "output" },
-    { day: "Thu", height: 82, tone: "input" },
-    { day: "Fri", height: 58, tone: "input" },
-    { day: "Sat", height: 37, tone: "output" },
-    { day: "Sun", height: 71, tone: "input" },
+    { day: "Mon", height: 46, totalTokens: 1_380_000, tone: "input" },
+    { day: "Tue", height: 63, totalTokens: 1_890_000, tone: "input" },
+    { day: "Wed", height: 31, totalTokens: 930_000, tone: "output" },
+    { day: "Thu", height: 82, totalTokens: 2_460_000, tone: "input" },
+    { day: "Fri", height: 58, totalTokens: 1_740_000, tone: "input" },
+    { day: "Sat", height: 37, totalTokens: 1_110_000, tone: "output" },
+    { day: "Sun", height: 71, totalTokens: 2_130_000, tone: "input" },
   ],
   limitWindows: [
     {

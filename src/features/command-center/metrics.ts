@@ -137,6 +137,7 @@ function toBurnBars(metrics: CodexMetricsAggregation) {
     return {
       day: day.day,
       height: maxTokens > 0 ? (day.totalTokens / maxTokens) * 100 : 0,
+      totalTokens: day.totalTokens,
       tone,
     };
   });
