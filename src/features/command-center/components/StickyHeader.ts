@@ -6,7 +6,7 @@ export function renderStickyHeader(timestamp: string): string {
       <div class="header-left">
         <div class="header-logo"><span>Codex</span> Metrics</div>
         <div class="live-dot"></div>
-        <span class="refresh-label">30s refresh</span>
+        <span class="refresh-label">1s refresh</span>
       </div>
       <div class="header-center">
         <span class="alert-pill yellow hidden" id="alert-rate">&#9889; Rate limit &gt;80%</span>

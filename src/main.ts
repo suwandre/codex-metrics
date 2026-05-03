@@ -5,7 +5,11 @@ import { isGeneratedMetricsFile, toCommandCenterData } from "./features/command-
 import { loadHistory, saveSnapshot } from "./features/history/storage";
 import type { TimeWindow } from "./features/history/types";
 
-const pollIntervalMs = 3000;
+// Polling chosen over SSE/WebSocket because:
+// - 1s HTTP polling on localhost has negligible overhead
+// - SSE/WebSocket would require persistent server process, connection management, and reconnection logic
+// - For a local dev tool dashboard, the complexity outweighs the ~500ms latency savings per update
+const pollIntervalMs = 1000;
 const app = document.querySelector<HTMLDivElement>("#app");
 
 if (!app) {

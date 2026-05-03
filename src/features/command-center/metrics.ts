@@ -54,7 +54,7 @@ export function toCommandCenterData(
   const metrics = file.metrics;
   const totals = metrics.totals;
   const hasRecords = file.ingestion.recordCount > 0;
-  const updatedAt = `Updated ${formatTime(file.generatedAt)}. Polling every 3s.`;
+  const updatedAt = `Updated ${formatTime(file.generatedAt)}. Polling every 1s.`;
 
   const inputTokens = totals.inputTokens.value;
   const cachedTokens = totals.cachedInputTokens.value;
@@ -349,6 +349,76 @@ function toKpis(
   return buildMockKpis(metrics);
 }
 
+const kpiDescriptions: Record<string, string> = {
+  "Success Rate": "% of tool executions that exited successfully",
+  "Latency p95": "95th percentile turn completion time",
+  Throughput: "Total tokens processed per minute",
+  "Active Sessions": "Number of active Codex sessions",
+  "Daily Burn / 95% limit": "Total tokens consumed today vs 95% limit",
+  "Rate Limit — weekly / 5h": "Codex API rate limit window consumption",
+  "Current RPM": "Requests per minute",
+  "Error Rate (5m)": "% of tool executions that failed",
+};
+
+function getHealthColor(metricKey: string, value: number): KpiMetric["color"] {
+  switch (metricKey) {
+    case "successRate":
+      return value >= 95 ? "success" : value >= 85 ? "warning" : "danger";
+    case "latency":
+      return value < 2000 ? "success" : value <= 5000 ? "warning" : "danger";
+    case "throughput":
+      return "accent";
+    case "activeSessions":
+      return "default";
+    case "dailyBurn": {
+      const limit = 10_000_000; // 95% of ~10.5M
+      const pct = (value / limit) * 100;
+      return pct < 70 ? "success" : pct <= 90 ? "warning" : "danger";
+    }
+    case "rateLimit":
+      return value < 50 ? "success" : value <= 80 ? "warning" : "danger";
+    case "rpm":
+      return "accent";
+    case "errorRate":
+      return value < 1 ? "success" : value <= 5 ? "warning" : "danger";
+    default:
+      return "default";
+  }
+}
+
+function getDeltaColor(
+  metricKey: string,
+  direction: "up" | "down" | "neutral",
+  currentValue: number,
+): KpiMetric["deltaColor"] {
+  if (direction === "neutral") return "default";
+
+  switch (metricKey) {
+    case "successRate":
+      return direction === "up" ? "success" : "danger";
+    case "latency":
+      return direction === "up" ? "danger" : "success";
+    case "errorRate":
+      return direction === "down" ? "success" : "danger";
+    case "rateLimit":
+      return direction === "up" ? "danger" : "success";
+    case "throughput":
+      return "default";
+    case "activeSessions":
+      return "default";
+    case "dailyBurn": {
+      const limit = 10_000_000;
+      const pct = (currentValue / limit) * 100;
+      if (direction === "up") return pct > 90 ? "danger" : "warning";
+      return "success";
+    }
+    case "rpm":
+      return "default";
+    default:
+      return "default";
+  }
+}
+
 function buildHistoryKpis(
   metrics: CodexMetricsAggregation,
   aggregated: AggregatedWindow,
@@ -379,8 +449,6 @@ function buildHistoryKpis(
       "successRate",
       sparkSuccess,
       timestamps,
-      successRate >= 0.9 ? "success" : "warning",
-      "",
       previous,
       latest,
     ),
@@ -390,8 +458,6 @@ function buildHistoryKpis(
       "latency",
       sparkLatency,
       timestamps,
-      latest.latency.p95Ms > 5000 ? "warning" : "accent",
-      "s",
       previous,
       latest,
     ),
@@ -401,8 +467,6 @@ function buildHistoryKpis(
       "throughput",
       sparkThroughput,
       timestamps,
-      "accent",
-      "k",
       previous,
       latest,
     ),
@@ -412,8 +476,6 @@ function buildHistoryKpis(
       "activeSessions",
       sparkSessions,
       timestamps,
-      "default",
-      "",
       previous,
       latest,
     ),
@@ -423,8 +485,6 @@ function buildHistoryKpis(
       "dailyBurn",
       sparkBurn,
       timestamps,
-      "info",
-      "",
       previous,
       latest,
     ),
@@ -434,8 +494,6 @@ function buildHistoryKpis(
       "rateLimit",
       sparkRate,
       timestamps,
-      "success",
-      "",
       previous,
       latest,
     ),
@@ -445,8 +503,6 @@ function buildHistoryKpis(
       "rpm",
       sparkRpm,
       timestamps,
-      "accent",
-      "",
       previous,
       latest,
     ),
@@ -456,8 +512,6 @@ function buildHistoryKpis(
       "errorRate",
       sparkError,
       timestamps,
-      errorRate > 5 ? "warning" : "default",
-      "",
       previous,
       latest,
     ),
@@ -470,8 +524,6 @@ function kpiFromHistory(
   metricKey: string,
   sparkline: number[],
   timestamps: string[],
-  color: KpiMetric["color"],
-  unit: string,
   previous: CodexMetricsAggregation | null,
   latest: CodexMetricsAggregation,
 ): KpiMetric {
@@ -507,15 +559,27 @@ function kpiFromHistory(
     direction = direction === "up" ? "down" : "up";
   }
 
+  const healthColor = getHealthColor(metricKey, currentVal);
+  const dColor = getDeltaColor(metricKey, direction, currentVal);
+
+  const shouldOmitUnit =
+    metricKey === "latency" ||
+    metricKey === "throughput" ||
+    metricKey === "dailyBurn" ||
+    metricKey === "rateLimit" ||
+    metricKey === "errorRate";
+
   return {
     label,
     value,
-    unit,
-    color,
+    unit: shouldOmitUnit ? "" : "",
+    color: healthColor,
     delta: deltaStr,
     deltaDirection: direction,
+    deltaColor: dColor,
     sparkline,
     timestamps,
+    description: kpiDescriptions[label],
   };
 }
 
@@ -555,86 +619,104 @@ function buildMockKpis(metrics: CodexMetricsAggregation): KpiMetric[] {
   const errorRate = 1 - successRate;
   const sessions = metrics.recentSessions;
 
-  return [
-    {
-      label: "Success Rate",
-      value: formatPercent(successRate),
-      color: successRate >= 0.9 ? "success" : "warning",
-      delta: `+${formatPercent(Math.max(0, successRate - 0.89))}`,
-      deltaDirection: "up",
-      sparkline: [85, 87, 88, 89, 90, 91, 91],
-      timestamps: generateTimestamps(7),
-    },
-    {
-      label: "Latency p95",
-      value: formatDuration(metrics.latency.p95Ms),
-      unit: "s",
-      color: metrics.latency.p95Ms > 5000 ? "warning" : "accent",
+  const mockVals: Record<string, number> = {
+    successRate: successRate * 100,
+    latency: metrics.latency.p95Ms,
+    throughput: metrics.throughput.totalTokensPerMinute,
+    activeSessions: sessions.length,
+    dailyBurn: metrics.totals.totalTokens.value,
+    rateLimit: metrics.rateLimitWindows[0]?.usedPercent ?? 0,
+    rpm: (metrics.throughput.totalTokensPerMinute / 1000) * 60,
+    errorRate: errorRate * 100,
+  };
+
+  const mockDirections: Record<string, { direction: "up" | "down" | "neutral"; delta: string }> = {
+    successRate: { direction: "up", delta: `+${formatPercent(Math.max(0, successRate - 0.89))}` },
+    latency: {
+      direction: "down",
       delta: `-${formatDuration(Math.max(0, metrics.latency.p95Ms - 2900))}`,
-      deltaDirection: "down",
-      sparkline: metrics.latency.samples > 0 ? [8, 7, 6, 5, 3, 3, 3] : [0, 0, 0, 0, 0, 0, 0],
-      timestamps: generateTimestamps(7),
     },
-    {
-      label: "Throughput",
-      value: formatCompactNumber(metrics.throughput.totalTokensPerMinute),
-      unit: "k",
-      color: "accent",
-      delta: "+5%",
-      deltaDirection: "up",
-      sparkline: [28, 30, 31, 32, 33, 33, 34],
-      timestamps: generateTimestamps(7),
-    },
-    {
-      label: "Active Sessions",
-      value: String(sessions.length),
-      color: "default",
+    throughput: { direction: "up", delta: "+5%" },
+    activeSessions: {
+      direction: "neutral",
       delta: sessions.length === 0 ? "— none" : "stable",
-      deltaDirection: "neutral",
-      sparkline: sessions.length > 0 ? [2, 2, 3, 3, 3, 3, 3] : [0, 0, 0, 0, 0, 0, 0],
-      timestamps: generateTimestamps(7),
     },
-    {
-      label: "Daily Burn / 95% limit",
-      value: formatCompactNumber(metrics.totals.totalTokens.value),
-      color: "info",
-      delta: "",
-      deltaDirection: "neutral",
-      sparkline: [15, 28, 67, 180, 55, 210, 12],
-      timestamps: generateTimestamps(7),
-    },
-    {
-      label: "Rate Limit — weekly / 5h",
-      value: metrics.rateLimitWindows[0]
-        ? `${Math.round(metrics.rateLimitWindows[0].usedPercent)}%`
-        : "0%",
-      color: "success",
+    dailyBurn: { direction: "neutral", delta: "" },
+    rateLimit: {
+      direction: "neutral",
       delta: metrics.rateLimitWindows[1]
         ? ` / ${Math.round(metrics.rateLimitWindows[1].usedPercent)}%`
         : "",
-      deltaDirection: "neutral",
-      sparkline: [2, 2, 4, 4, 4, 2, 2],
-      timestamps: generateTimestamps(7),
     },
-    {
-      label: "Current RPM",
-      value: String(Math.round((metrics.throughput.totalTokensPerMinute / 1000) * 60)),
-      color: "accent",
-      delta: "",
-      deltaDirection: "neutral",
-      sparkline: [80, 90, 100, 110, 114, 112, 115],
-      timestamps: generateTimestamps(7),
-    },
-    {
-      label: "Error Rate (5m)",
-      value: `${formatCompactNumber(errorRate * 100)}%`,
-      color: errorRate > 0.05 ? "warning" : "default",
-      delta: "-0.5%",
-      deltaDirection: "down",
-      sparkline: [5, 4, 4, 3, 3, 2, 2],
-      timestamps: generateTimestamps(7),
-    },
+    rpm: { direction: "neutral", delta: "" },
+    errorRate: { direction: "down", delta: "-0.5%" },
+  };
+
+  const mockKeys = [
+    "successRate",
+    "latency",
+    "throughput",
+    "activeSessions",
+    "dailyBurn",
+    "rateLimit",
+    "rpm",
+    "errorRate",
+  ] as const;
+
+  const labels = [
+    "Success Rate",
+    "Latency p95",
+    "Throughput",
+    "Active Sessions",
+    "Daily Burn / 95% limit",
+    "Rate Limit — weekly / 5h",
+    "Current RPM",
+    "Error Rate (5m)",
   ];
+
+  const mockSparklines: Record<string, number[]> = {
+    successRate: [85, 87, 88, 89, 90, 91, 91],
+    latency: metrics.latency.samples > 0 ? [8, 7, 6, 5, 3, 3, 3] : [0, 0, 0, 0, 0, 0, 0],
+    throughput: [28, 30, 31, 32, 33, 33, 34],
+    activeSessions: sessions.length > 0 ? [2, 2, 3, 3, 3, 3, 3] : [0, 0, 0, 0, 0, 0, 0],
+    dailyBurn: [15, 28, 67, 180, 55, 210, 12],
+    rateLimit: [2, 2, 4, 4, 4, 2, 2],
+    rpm: [80, 90, 100, 110, 114, 112, 115],
+    errorRate: [5, 4, 4, 3, 3, 2, 2],
+  };
+
+  const mockValues: Record<string, string> = {
+    successRate: formatPercent(successRate),
+    latency: formatDuration(metrics.latency.p95Ms),
+    throughput: formatCompactNumber(metrics.throughput.totalTokensPerMinute),
+    activeSessions: String(sessions.length),
+    dailyBurn: formatCompactNumber(metrics.totals.totalTokens.value),
+    rateLimit: metrics.rateLimitWindows[0]
+      ? `${Math.round(metrics.rateLimitWindows[0].usedPercent)}%`
+      : "0%",
+    rpm: String(Math.round((metrics.throughput.totalTokensPerMinute / 1000) * 60)),
+    errorRate: `${formatCompactNumber(errorRate * 100)}%`,
+  };
+
+  const timestamps = generateTimestamps(7);
+
+  return labels.map((label, i) => {
+    const key = mockKeys[i];
+    const val = mockVals[key];
+    const dir = mockDirections[key];
+    return {
+      label,
+      value: mockValues[key],
+      unit: "",
+      color: getHealthColor(key, val),
+      delta: dir.delta,
+      deltaDirection: dir.direction,
+      deltaColor: getDeltaColor(key, dir.direction, val),
+      sparkline: mockSparklines[key],
+      timestamps,
+      description: kpiDescriptions[label],
+    };
+  });
 }
 
 function generateTimestamps(count: number): string[] {

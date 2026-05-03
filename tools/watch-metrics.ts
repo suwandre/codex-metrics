@@ -35,7 +35,7 @@ console.log(
 function parseArgs(args: string[]): WatchOptions {
   const parsed = {
     debounceMs: 500,
-    intervalMs: 10_000,
+    intervalMs: 3_000,
     once: false,
   };
 
@@ -86,7 +86,7 @@ function printHelp() {
 Options:
   --once                 Generate metrics once, then exit
   --debounce-ms <count>  Debounce file changes. Default: 500
-  --interval-ms <count>  Fallback regeneration interval. Default: 10000
+  --interval-ms <count>  Fallback regeneration interval. Default: 3000
 `);
 }
 
