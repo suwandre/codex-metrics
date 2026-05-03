@@ -29,7 +29,7 @@ Agent loop format:
 
 ## Upcoming Tasks
 
-- [ ] TASK-010: Metrics history storage (localStorage ring buffer)
+- [x] TASK-010: Metrics history storage (localStorage ring buffer)
   - Store every unique `metrics.json` snapshot in `localStorage` as a time-series ring buffer.
   - Prune to last 500 snapshots (~1MB cap).
   - Hook into `main.ts`: append snapshot on every `generatedAt` change.
@@ -41,7 +41,7 @@ Agent loop format:
     - No `localStorage` errors if quota exceeded (prune proactively).
     - `bun run verify` passes.
 
-- [ ] TASK-011: Time window aggregation (1h / 24h / 7d / 30d / All)
+- [x] TASK-011: Time window aggregation (1h / 24h / 7d / 30d / All)
   - Bucket stored snapshots by selected window with appropriate intervals:
     - 1h: 5-minute buckets, 12 points
     - 24h: 1-hour buckets, 24 points
