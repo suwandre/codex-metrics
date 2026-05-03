@@ -40,6 +40,7 @@ async function refreshDashboard({ forceRender }: { forceRender: boolean }) {
         refreshStatus: `Updated ${formatTime(metrics.generatedAt)}. Polling every ${pollIntervalMs / 1000}s.`,
       }),
     );
+    setupInteractions();
   } catch (error: unknown) {
     const message = error instanceof Error ? error.message : "Unknown metrics loading error.";
 
@@ -73,24 +74,74 @@ async function loadMetrics() {
 
 function setRefreshStatus(message: string) {
   const status = document.querySelector<HTMLParagraphElement>("#refresh-status");
-
-  if (!status) {
-    return;
-  }
-
+  if (!status) return;
   status.textContent = message;
 }
 
 function formatTime(value: Date | string) {
   const date = typeof value === "string" ? new Date(value) : value;
-
-  if (Number.isNaN(date.getTime())) {
-    return typeof value === "string" ? value : "unknown";
-  }
-
+  if (Number.isNaN(date.getTime())) return typeof value === "string" ? value : "unknown";
   return date.toLocaleTimeString([], {
     hour: "2-digit",
     minute: "2-digit",
     second: "2-digit",
   });
+}
+
+function setupInteractions() {
+  // Section collapse
+  document.querySelectorAll("[data-toggle='section']").forEach((header) => {
+    header.addEventListener("click", () => {
+      const section = header.closest(".section");
+      if (section) section.classList.toggle("collapsed");
+    });
+  });
+
+  // Toggle tabs
+  document.querySelectorAll(".toggle-tab").forEach((tab) => {
+    tab.addEventListener("click", () => {
+      const parent = tab.closest(".toggle-tabs");
+      if (!parent) return;
+      parent.querySelectorAll(".toggle-tab").forEach((t) => t.classList.remove("active"));
+      tab.classList.add("active");
+    });
+  });
+
+  // Sidebar active tracking via IntersectionObserver
+  const sections = document.querySelectorAll(".section");
+  const navLinks = document.querySelectorAll(".nav-link");
+  const observer = new IntersectionObserver(
+    (entries) => {
+      entries.forEach((entry) => {
+        if (entry.isIntersecting) {
+          const id = entry.target.id;
+          navLinks.forEach((l) => {
+            l.classList.remove("active");
+            if (l.getAttribute("href") === `#${id}`) l.classList.add("active");
+          });
+        }
+      });
+    },
+    { rootMargin: "-60px 0px -60% 0px", threshold: 0 },
+  );
+  sections.forEach((s) => observer.observe(s));
+
+  // Refresh now button
+  const btnRefresh = document.getElementById("btn-refresh");
+  if (btnRefresh) {
+    btnRefresh.addEventListener("click", () => {
+      const ts = document.getElementById("timestamp");
+      if (ts) ts.textContent = "Updated just now";
+      void refreshDashboard({ forceRender: true });
+    });
+  }
+
+  // Export CSV button
+  const btnExport = document.getElementById("btn-export");
+  if (btnExport) {
+    btnExport.addEventListener("click", () => {
+      // eslint-disable-next-line no-console
+      console.log("CSV export triggered");
+    });
+  }
 }

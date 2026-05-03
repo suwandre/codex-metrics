@@ -1,36 +1,33 @@
 import type { CommandCenterData } from "../types";
-import { renderDailyTokenBurn } from "./DailyTokenBurn";
-import { renderKpiCards } from "./KpiCards";
-import { renderLimitWindows } from "./LimitWindows";
-import { renderModelUsage } from "./ModelUsage";
-import { renderRecentSessions } from "./RecentSessions";
-import { renderSidebar } from "./Sidebar";
-import { renderTopbar } from "./Topbar";
+import { renderApiProductsSection } from "./ApiProductsSection";
+import { renderBillingSection } from "./BillingSection";
+import { renderCacheSection } from "./CacheSection";
+import { renderContextSection } from "./ContextSection";
+import { renderRateLimitSection } from "./RateLimitSection";
+import { renderRepoSection } from "./RepoSection";
+import { renderSessionStreamSection } from "./SessionStreamSection";
+import { renderSidebarNav } from "./SidebarNav";
+import { renderStickyHeader } from "./StickyHeader";
+import { renderSystemPulse } from "./SystemPulse";
+import { renderTokenBurnSection } from "./TokenBurnSection";
+import { renderToolReliabilitySection } from "./ToolReliabilitySection";
 
 export function renderCommandCenter(data: CommandCenterData): string {
   return `
-    <div class="shell">
-      ${renderSidebar({ navItems: data.navItems, sideNote: data.sideNote })}
-
-      <main class="workspace">
-        ${renderTopbar({
-          title: data.title,
-          subtitle: data.subtitle,
-          refreshStatus: data.refreshStatus,
-          filters: data.filters,
-        })}
-
-        ${renderKpiCards({ metrics: data.metrics })}
-
-        <section id="tokens" class="section">
-          ${renderDailyTokenBurn({ burnBars: data.burnBars })}
-          ${renderLimitWindows({ limitWindows: data.limitWindows })}
-        </section>
-
-        <section class="section">
-          ${renderRecentSessions({ sessions: data.sessions })}
-          ${renderModelUsage({ modelUsage: data.modelUsage })}
-        </section>
+    <div class="layout">
+      ${renderSidebarNav()}
+      <main class="main" id="main">
+        ${renderStickyHeader(data.refreshStatus)}
+        ${renderSystemPulse(data.kpis)}
+        ${renderTokenBurnSection(data.tokenBurn)}
+        ${renderRateLimitSection(data.rateLimits)}
+        ${renderSessionStreamSection(data.sessionStream)}
+        ${renderCacheSection(data.cache)}
+        ${renderContextSection(data.context)}
+        ${renderToolReliabilitySection(data.tools)}
+        ${renderRepoSection(data.repos)}
+        ${renderBillingSection(data.billing)}
+        ${renderApiProductsSection(data.products)}
       </main>
     </div>
   `;
