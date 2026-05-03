@@ -1,0 +1,936 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codex Metrics — Operator Console</title>
+<style>
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0b0c15;--surface:#151621;--border:#2a2c3d;
+  --text-primary:#e8e8ef;--text-secondary:#6c6f85;
+  --accent:#339af0;--success:#51cf66;--warning:#fcc419;--danger:#ff6b6b;--info:#845ef7;
+  --chart-grid:#1f2130;
+  --radius:6px;
+}
+html{scroll-behavior:smooth;scrollbar-width:thin;scrollbar-color:var(--border) var(--bg)}
+body{font-family:'SF Mono',SFMono-Regular,Consolas,'Liberation Mono',monospace;background:var(--bg);color:var(--text-primary);font-size:13px;line-height:1.5;min-width:1280px}
+a{color:var(--accent);text-decoration:none}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--bg)}
+::-webkit-scrollbar-thumb{background:var(--border);border-radius:3px}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:180px 1fr;min-height:100vh}
+.sidebar{position:sticky;top:0;height:100vh;overflow-y:auto;background:var(--bg);border-right:1px solid var(--border);padding:12px 0;z-index:100}
+.sidebar::-webkit-scrollbar{width:3px}
+.main{overflow-x:hidden}
+
+/* SIDEBAR NAV */
+.nav-logo{padding:12px 16px 20px;font-size:14px;font-weight:700;color:var(--text-primary);letter-spacing:0.5px;border-bottom:1px solid var(--border);margin-bottom:8px}
+.nav-logo span{color:var(--accent)}
+.nav-section{padding:4px 16px;font-size:9px;font-weight:700;text-transform:uppercase;color:var(--text-secondary);letter-spacing:1px;margin-top:12px}
+.nav-link{display:flex;align-items:center;gap:8px;padding:6px 16px;color:var(--text-secondary);font-size:12px;cursor:pointer;transition:all .15s;border-left:2px solid transparent}
+.nav-link:hover{color:var(--text-primary);background:rgba(51,154,240,.06)}
+.nav-link.active{color:var(--accent);border-left-color:var(--accent);background:rgba(51,154,240,.08)}
+.nav-link .badge{margin-left:auto;background:var(--border);color:var(--text-secondary);font-size:10px;padding:1px 6px;border-radius:8px}
+.nav-link.active .badge{background:rgba(51,154,240,.2);color:var(--accent)}
+
+/* STICKY HEADER */
+.header{position:sticky;top:0;z-index:99;background:var(--surface);border-bottom:1px solid var(--border);padding:8px 24px;display:flex;align-items:center;gap:16px;backdrop-filter:blur(8px)}
+.header-left{display:flex;align-items:center;gap:12px;flex-shrink:0}
+.header-logo{font-weight:700;font-size:15px;letter-spacing:.5px}
+.header-logo span{color:var(--accent)}
+.live-dot{width:8px;height:8px;background:var(--success);border-radius:50%;animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.refresh-label{font-size:11px;color:var(--text-secondary)}
+.header-center{flex:1;display:flex;align-items:center;gap:8px;justify-content:center}
+.alert-pill{display:inline-flex;align-items:center;gap:4px;padding:3px 10px;border-radius:12px;font-size:11px;font-weight:600;white-space:nowrap}
+.alert-pill.yellow{background:rgba(252,196,25,.12);color:var(--warning);border:1px solid rgba(252,196,25,.25)}
+.alert-pill.red{background:rgba(255,107,107,.12);color:var(--danger);border:1px solid rgba(255,107,107,.25)}
+.alert-pill.blue{background:rgba(132,94,247,.12);color:var(--info);border:1px solid rgba(132,94,247,.25)}
+.alert-pill.hidden{display:none}
+.header-right{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.btn{padding:5px 14px;border-radius:var(--radius);border:1px solid var(--border);background:var(--surface);color:var(--text-primary);font-size:12px;cursor:pointer;transition:all .15s;font-family:inherit}
+.btn:hover{border-color:var(--accent);background:rgba(51,154,240,.08)}
+.btn-accent{background:var(--accent);color:#fff;border-color:var(--accent)}
+.btn-accent:hover{background:#2b8ae0}
+.timestamp{font-size:11px;color:var(--text-secondary)}
+
+/* SECTION */
+.section{border-bottom:1px solid var(--border)}
+.section-header{display:flex;align-items:center;gap:10px;padding:12px 24px;cursor:pointer;user-select:none;transition:background .15s}
+.section-header:hover{background:rgba(51,154,240,.04)}
+.section-title{font-size:11px;font-weight:700;text-transform:uppercase;letter-spacing:1px;color:var(--text-secondary)}
+.section-badge{background:var(--border);color:var(--text-secondary);font-size:10px;padding:1px 8px;border-radius:8px;font-weight:600}
+.section-collapse{margin-left:auto;color:var(--text-secondary);font-size:16px;transition:transform .2s;width:20px;text-align:center}
+.section.collapsed .section-collapse{transform:rotate(-90deg)}
+.section-body{padding:16px 24px 20px}
+.section.collapsed .section-body{display:none}
+
+/* KPI TILES */
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:10px}
+.kpi-tile{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px 10px;transition:border-color .15s}
+.kpi-tile:hover{border-color:var(--accent)}
+.kpi-big{font-size:24px;font-weight:700;line-height:1.2}
+.kpi-label{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.kpi-delta{font-size:11px;margin-top:4px;display:inline-flex;align-items:center;gap:3px;padding:1px 6px;border-radius:4px}
+.kpi-delta.up{color:var(--success);background:rgba(81,207,102,.1)}
+.kpi-delta.down{color:var(--danger);background:rgba(255,107,107,.1)}
+.kpi-delta.neutral{color:var(--text-secondary);background:rgba(108,111,133,.1)}
+.kpi-sparkline{margin-top:8px}
+
+/* CHARTS */
+.chart-container{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:16px;margin-bottom:10px}
+.chart-title{font-size:11px;font-weight:700;text-transform:uppercase;color:var(--text-secondary);letter-spacing:.5px;margin-bottom:12px}
+.chart-row{display:grid;gap:10px}
+.chart-row.col-2{grid-template-columns:1fr 1fr}
+.chart-row.col-3{grid-template-columns:1fr 1fr 1fr}
+.chart-row.col-4{grid-template-columns:1fr 1fr 1fr 1fr}
+.chart-full{margin-bottom:10px}
+
+/* DATA TABLES */
+.data-table{width:100%;border-collapse:collapse;font-size:12px}
+.data-table thead{position:sticky;top:0}
+.data-table th{text-align:left;padding:8px 12px;font-size:10px;font-weight:700;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary);border-bottom:1px solid var(--border);background:var(--surface)}
+.data-table td{padding:6px 12px;border-bottom:1px solid var(--border);color:var(--text-primary)}
+.data-table tbody tr:hover{background:rgba(51,154,240,.04)}
+.data-table tbody tr:last-child td{border-bottom:none}
+
+/* STATUS BADGES */
+.status{display:inline-flex;align-items:center;gap:4px;padding:2px 8px;border-radius:4px;font-size:11px;font-weight:600}
+.status.ok{background:rgba(81,207,102,.12);color:var(--success)}
+.status.warn{background:rgba(252,196,25,.12);color:var(--warning)}
+.status.danger{background:rgba(255,107,107,.12);color:var(--danger)}
+.status.info{background:rgba(132,94,247,.12);color:var(--info)}
+.status.retry{background:rgba(252,196,25,.12);color:var(--warning)}
+.status.unknown{background:rgba(108,111,133,.12);color:var(--text-secondary)}
+
+/* PROGRESS */
+.progress-bar{background:var(--border);border-radius:3px;height:8px;overflow:hidden}
+.progress-fill{height:100%;border-radius:3px;transition:width .3s}
+
+/* CARDS */
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:14px 16px;transition:border-color .15s}
+.card:hover{border-color:var(--accent)}
+.card-label{font-size:10px;text-transform:uppercase;letter-spacing:.5px;color:var(--text-secondary);margin-bottom:4px}
+.card-value{font-size:18px;font-weight:700}
+.card-sub{font-size:11px;color:var(--text-secondary);margin-top:2px}
+.card-grid{display:grid;gap:10px}
+.card-grid.col-3{grid-template-columns:repeat(3,1fr)}
+.card-grid.col-2{grid-template-columns:repeat(2,1fr)}
+
+/* GAUGE */
+.gauge-wrap{text-align:center}
+.gauge-label{font-size:11px;color:var(--text-secondary);margin-top:4px}
+
+/* HORIZONTAL BAR */
+.hbar-row{display:flex;align-items:center;gap:10px;margin-bottom:6px}
+.hbar-label{width:120px;text-align:right;font-size:12px;color:var(--text-secondary);flex-shrink:0}
+.hbar-track{flex:1;height:20px;background:var(--chart-grid);border-radius:3px;overflow:hidden;position:relative}
+.hbar-fill{height:100%;border-radius:3px;display:flex;align-items:center;justify-content:flex-end;padding-right:6px;font-size:10px;font-weight:700;color:var(--text-primary);transition:width .3s}
+
+/* STACKED BAR */
+.stacked-bar{height:32px;border-radius:4px;overflow:hidden;display:flex}
+.stacked-bar>div{display:flex;align-items:center;justify-content:center;font-size:10px;font-weight:600;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;padding:0 4px;transition:width .3s}
+
+/* PROJECTION */
+.projection{display:inline-flex;align-items:center;gap:6px;padding:6px 14px;border-radius:var(--radius);font-size:12px;font-weight:600}
+.projection.safe{background:rgba(81,207,102,.1);color:var(--success);border:1px solid rgba(81,207,102,.2)}
+
+/* TOGGLE TABS */
+.toggle-tabs{display:inline-flex;border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;margin-bottom:12px}
+.toggle-tab{padding:5px 14px;font-size:11px;cursor:pointer;background:var(--surface);color:var(--text-secondary);border:none;font-family:inherit;transition:all .15s}
+.toggle-tab.active{background:var(--accent);color:#fff}
+.toggle-tab:hover:not(.active){background:rgba(51,154,240,.06);color:var(--text-primary)}
+
+/* MISC */
+.muted{color:var(--text-secondary)}
+.mono{font-family:inherit}
+.flex-center{display:flex;align-items:center}
+.gap-4{gap:4px}.gap-8{gap:8px}.gap-12{gap:12px}.gap-16{gap:16px}.gap-24{gap:24px}
+.mt-8{margin-top:8px}.mt-12{margin-top:12px}.mt-16{margin-top:16px}
+.mb-8{margin-bottom:8px}.mb-12{margin-bottom:12px}
+.inline-flex{display:inline-flex;align-items:center}
+.text-success{color:var(--success)}.text-danger{color:var(--danger)}.text-warning{color:var(--warning)}.text-accent{color:var(--accent)}.text-info{color:var(--info)}.text-muted{color:var(--text-secondary)}
+.font-bold{font-weight:700}.font-mono{font-family:inherit}
+</style>
+</head>
+<body>
+<div class="layout">
+<!-- SIDEBAR NAV -->
+<nav class="sidebar" id="sidebar">
+  <div class="nav-logo"><span>Codex</span> Metrics</div>
+  <div class="nav-section">Overview</div>
+  <a class="nav-link" href="#pulse">System Pulse</a>
+  <div class="nav-section">Sections</div>
+  <a class="nav-link" href="#s1">Token Burn <span class="badge">4</span></a>
+  <a class="nav-link" href="#s2">Rate Limits <span class="badge">3</span></a>
+  <a class="nav-link" href="#s3">Sessions <span class="badge">5</span></a>
+  <a class="nav-link" href="#s4">Cache <span class="badge">4</span></a>
+  <a class="nav-link" href="#s5">Context <span class="badge">3</span></a>
+  <a class="nav-link" href="#s6">Tools <span class="badge">4</span></a>
+  <a class="nav-link" href="#s7">Repos <span class="badge">4</span></a>
+  <a class="nav-link" href="#s8">Billing <span class="badge">4</span></a>
+  <a class="nav-link" href="#s9">Products <span class="badge">7</span></a>
+</nav>
+
+<main class="main">
+<!-- STICKY HEADER -->
+<header class="header">
+  <div class="header-left">
+    <div class="header-logo"><span>Codex</span> Metrics</div>
+    <div class="live-dot"></div>
+    <span class="refresh-label">30s refresh</span>
+  </div>
+  <div class="header-center">
+    <span class="alert-pill yellow hidden" id="alert-rate">⚡ Rate limit &gt;80%</span>
+    <span class="alert-pill red hidden" id="alert-ctx">🔥 Context &gt;90%</span>
+    <span class="alert-pill yellow hidden" id="alert-success">⚠ Success &lt;85%</span>
+    <span class="alert-pill blue hidden" id="alert-cache">💾 Cache &lt;50%</span>
+  </div>
+  <div class="header-right">
+    <button class="btn" onclick="exportCSV()">Export CSV</button>
+    <button class="btn btn-accent" onclick="refreshNow()">Refresh now</button>
+    <span class="timestamp" id="timestamp">Updated 30s ago</span>
+  </div>
+</header>
+
+<!-- S0: SYSTEM PULSE -->
+<section class="section" id="pulse">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div class="section-title">System Pulse</div>
+    <div class="section-badge">8</div>
+    <div class="section-collapse">▼</div>
+  </div>
+  <div class="section-body">
+    <div class="kpi-grid">
+      <!-- 1. Success Rate -->
+      <div class="kpi-tile">
+        <div class="kpi-big text-success">91%</div>
+        <div class="kpi-label">Success Rate</div>
+        <div class="kpi-delta up">▲ +2%</div>
+        <div class="kpi-sparkline">
+          <svg width="100%" height="28" viewBox="0 0 120 28" preserveAspectRatio="none">
+            <polyline fill="none" stroke="var(--success)" stroke-width="1.5" points="0,24 17,22 34,20 51,18 68,16 85,14 102,12 120,10"/>
+          </svg>
+        </div>
+      </div>
+      <!-- 2. Latency p95 -->
+      <div class="kpi-tile">
+        <div class="kpi-big text-warning">2.6<span style="font-size:14px;color:var(--text-secondary)">s</span></div>
+        <div class="kpi-label">Latency p95</div>
+        <div class="kpi-delta up">▼ -0.3s</div>
+        <div class="kpi-sparkline">
+          <svg width="100%" height="28" viewBox="0 0 120 28" preserveAspectRatio="none">
+            <polyline fill="none" stroke="var(--warning)" stroke-width="1.5" points="0,8 17,10 34,12 51,14 68,16 85,18 102,20 120,22"/>
+          </svg>
+        </div>
+      </div>
+      <!-- 3. Throughput -->
+      <div class="kpi-tile">
+        <div class="kpi-big text-accent">33.5<span style="font-size:14px;color:var(--text-secondary)">k</span><span style="font-size:11px;color:var(--text-secondary)">/min</span></div>
+        <div class="kpi-label">Throughput</div>
+        <div class="kpi-delta up">▲ +5%</div>
+        <div class="kpi-sparkline">
+          <svg width="100%" height="28" viewBox="0 0 120 28" preserveAspectRatio="none">
+            <polyline fill="none" stroke="var(--accent)" stroke-width="1.5" points="0,22 17,20 34,18 51,22 68,14 85,12 102,10 120,8"/>
+          </svg>
+        </div>
+      </div>
+      <!-- 4. Active Sessions -->
+      <div class="kpi-tile">
+        <div class="kpi-big">3</div>
+        <div class="kpi-label">Active Sessions</div>
+        <div class="kpi-delta neutral">— stable</div>
+        <div class="kpi-sparkline">
+          <svg width="100%" height="28" viewBox="0 0 120 28" preserveAspectRatio="none">
+            <polyline fill="none" stroke="var(--text-secondary)" stroke-width="1.5" points="0,14 17,14 34,14 51,12 68,14 85,14 102,16 120,14"/>
+          </svg>
+        </div>
+      </div>
+      <!-- 5. Daily Burn -->
+      <div class="kpi-tile">
+        <div class="kpi-big">313.3<span style="font-size:14px;color:var(--text-secondary)">M</span></div>
+        <div class="kpi-label">Daily Burn / 95% limit</div>
+        <div class="kpi-sparkline">
+          <svg width="100%" height="28" viewBox="0 0 120 28" preserveAspectRatio="none">
+            <polyline fill="none" stroke="var(--info)" stroke-width="1.5" points="0,26 17,24 34,22 51,18 68,14 85,10 102,8 120,6"/>
+          </svg>
+        </div>
+      </div>
+      <!-- 6. Rate Limit -->
+      <div class="kpi-tile">
+        <div class="kpi-big text-success">8<span style="font-size:14px">%</span><span style="font-size:11px;color:var(--text-secondary)"> / 0%</span></div>
+        <div class="kpi-label">Rate Limit — weekly / 5h</div>
+        <div class="kpi-sparkline">
+          <svg width="100%" height="28" viewBox="0 0 120 28" preserveAspectRatio="none">
+            <polyline fill="none" stroke="var(--success)" stroke-width="1.5" points="0,26 17,26 34,24 51,24 68,24 85,26 102,26 120,26"/>
+          </svg>
+        </div>
+      </div>
+      <!-- 7. Current RPM -->
+      <div class="kpi-tile">
+        <div class="kpi-big text-accent">114</div>
+        <div class="kpi-label">Current RPM</div>
+        <div class="kpi-sparkline">
+          <svg width="100%" height="28" viewBox="0 0 120 28" preserveAspectRatio="none">
+            <polyline fill="none" stroke="var(--accent)" stroke-width="1.5" points="0,18 17,16 34,14 51,18 68,12 85,10 102,14 120,12"/>
+          </svg>
+        </div>
+      </div>
+      <!-- 8. Error Rate -->
+      <div class="kpi-tile">
+        <div class="kpi-big text-warning">2.1<span style="font-size:14px">%</span></div>
+        <div class="kpi-label">Error Rate (5m)</div>
+        <div class="kpi-delta up">▼ -0.5%</div>
+        <div class="kpi-sparkline">
+          <svg width="100%" height="28" viewBox="0 0 120 28" preserveAspectRatio="none">
+            <polyline fill="none" stroke="var(--warning)" stroke-width="1.5" points="0,8 17,10 34,12 51,14 68,16 85,18 102,20 120,22"/>
+          </svg>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S1: TOKEN BURN & COMPOSITION -->
+<section class="section" id="s1">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div class="section-title">Token Burn &amp; Composition</div>
+    <div class="section-badge">4</div>
+    <div class="section-collapse">▼</div>
+  </div>
+  <div class="section-body">
+    <!-- Stacked bar -->
+    <div class="chart-container mb-12">
+      <div class="chart-title">Token Composition</div>
+      <div class="stacked-bar">
+        <div style="width:60.1%;background:var(--accent)">312.1M input</div>
+        <div style="width:28%;background:var(--success)">296.6M cached</div>
+        <div style="width:7.9%;background:var(--info)">1.1M output</div>
+        <div style="width:4%;background:var(--warning)">297k reasoning</div>
+      </div>
+    </div>
+    <!-- Stacked Area Chart -->
+    <div class="chart-container mb-12">
+      <div class="chart-title">Token Burn — 24h (stacked area, 5m buckets)</div>
+      <svg width="100%" height="160" viewBox="0 0 600 160">
+        <defs>
+          <linearGradient id="gradInput" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--accent)" stop-opacity="0.5"/><stop offset="100%" stop-color="var(--accent)" stop-opacity="0.05"/></linearGradient>
+          <linearGradient id="gradCache" x1="0" y1="0" x2="0" y2="1"><stop offset="0%" stop-color="var(--success)" stop-opacity="0.4"/><stop offset="100%" stop-color="var(--success)" stop-opacity="0.05"/></linearGradient>
+        </defs>
+        <!-- Grid -->
+        <line x1="40" y1="10" x2="40" y2="140" stroke="var(--chart-grid)" stroke-width="1"/>
+        <line x1="40" y1="140" x2="580" y2="140" stroke="var(--chart-grid)" stroke-width="1"/>
+        <line x1="40" y1="75" x2="580" y2="75" stroke="var(--chart-grid)" stroke-width="0.5" stroke-dasharray="4"/>
+        <text x="10" y="75" fill="var(--text-secondary)" font-size="9">7M</text>
+        <text x="10" y="140" fill="var(--text-secondary)" font-size="9">0</text>
+        <!-- Cache area (bottom) -->
+        <polygon fill="url(#gradCache)" points="40,140 97,132 154,125 211,118 268,110 325,104 382,98 439,102 496,96 553,90 553,140 40,140"/>
+        <polyline fill="none" stroke="var(--success)" stroke-width="1.5" points="40,133 97,125 154,118 211,110 268,104 325,98 382,92 439,96 496,90 553,84"/>
+        <!-- Input area (on top) -->
+        <polygon fill="url(#gradInput)" points="40,133 97,116 154,100 211,82 268,70 325,62 382,50 439,56 496,42 553,35 553,140 40,140"/>
+        <polyline fill="none" stroke="var(--accent)" stroke-width="1.5" points="40,133 97,116 154,100 211,82 268,70 325,62 382,50 439,56 496,42 553,35"/>
+        <!-- X labels -->
+        <text x="40" y="155" fill="var(--text-secondary)" font-size="9">00:00</text>
+        <text x="211" y="155" fill="var(--text-secondary)" font-size="9">04:00</text>
+        <text x="382" y="155" fill="var(--text-secondary)" font-size="9">13:00</text>
+        <text x="553" y="155" fill="var(--text-secondary)" font-size="9">now</text>
+      </svg>
+    </div>
+    <!-- Daily burn bar -->
+    <div class="chart-container mb-12">
+      <div class="chart-title">Daily Burn (this week)</div>
+      <svg width="100%" height="120" viewBox="0 0 560 120">
+        <line x1="40" y1="100" x2="540" y2="100" stroke="var(--chart-grid)" stroke-width="1"/>
+        <!-- Max is 210M, scale accordingly -->
+        <rect x="60" y="93" width="50" height="7" rx="2" fill="var(--accent)" opacity="0.7"><title>Mon: 15M</title></rect>
+        <rect x="130" y="87" width="50" height="13" rx="2" fill="var(--accent)" opacity="0.7"><title>Tue: 28M</title></rect>
+        <rect x="200" y="68" width="50" height="32" rx="2" fill="var(--accent)" opacity="0.8"><title>Wed: 67M</title></rect>
+        <rect x="270" y="14" width="50" height="86" rx="2" fill="var(--accent)" opacity="0.9"><title>Thu: 180M</title></rect>
+        <rect x="340" y="74" width="50" height="26" rx="2" fill="var(--accent)" opacity="0.7"><title>Fri: 55M</title></rect>
+        <rect x="410" y="0" width="50" height="100" rx="2" fill="var(--danger)" opacity="0.8"><title>Sat: 210M</title></rect>
+        <rect x="480" y="94" width="50" height="6" rx="2" fill="var(--accent)" opacity="0.6"><title>Sun: 12M</title></rect>
+        <text x="85" y="115" fill="var(--text-secondary)" font-size="9" text-anchor="middle">Mon</text>
+        <text x="155" y="115" fill="var(--text-secondary)" font-size="9" text-anchor="middle">Tue</text>
+        <text x="225" y="115" fill="var(--text-secondary)" font-size="9" text-anchor="middle">Wed</text>
+        <text x="295" y="115" fill="var(--text-secondary)" font-size="9" text-anchor="middle">Thu</text>
+        <text x="365" y="115" fill="var(--text-secondary)" font-size="9" text-anchor="middle">Fri</text>
+        <text x="435" y="115" fill="var(--text-secondary)" font-size="9" text-anchor="middle">Sat</text>
+        <text x="505" y="115" fill="var(--text-secondary)" font-size="9" text-anchor="middle">Sun</text>
+      </svg>
+    </div>
+    <!-- Model mix donut -->
+    <div class="chart-row col-2">
+      <div class="chart-container">
+        <div class="chart-title">Model Mix</div>
+        <div class="flex-center gap-16" style="justify-content:center;padding:8px 0">
+          <svg width="120" height="120" viewBox="0 0 120 120">
+            <circle cx="60" cy="60" r="48" fill="none" stroke="var(--accent)" stroke-width="16"/>
+            <text x="60" y="58" text-anchor="middle" fill="var(--text-primary)" font-size="16" font-weight="700">100%</text>
+            <text x="60" y="72" text-anchor="middle" fill="var(--text-secondary)" font-size="9">openai</text>
+          </svg>
+          <div>
+            <div style="font-size:12px;margin-bottom:4px"><span style="display:inline-block;width:10px;height:10px;background:var(--accent);border-radius:2px;margin-right:6px"></span>openai — 100%</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S2: RATE LIMIT FORECAST -->
+<section class="section" id="s2">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div class="section-title">Rate Limit Forecast</div>
+    <div class="section-badge">3</div>
+    <div class="section-collapse">▼</div>
+  </div>
+  <div class="section-body">
+    <div class="chart-container mb-12">
+      <div class="chart-title">Rate Limit Windows</div>
+      <table class="data-table">
+        <thead><tr><th>Window</th><th>Used</th><th>Remaining</th><th>Reset Countdown</th><th>Status</th></tr></thead>
+        <tbody>
+          <tr><td>5h primary</td><td>0%</td><td>100%</td><td>resets 13:04 (2h 57m)</td><td><span class="status ok">● ok</span></td></tr>
+          <tr><td>1w secondary</td><td>8%</td><td>92%</td><td>resets May 08 20:38 (5d 10h)</td><td><span class="status ok">● ok</span></td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="chart-container mb-12">
+      <div class="chart-title">Burn Rate — RPM vs Limit (last 1h)</div>
+      <svg width="100%" height="140" viewBox="0 0 600 140">
+        <line x1="40" y1="120" x2="580" y2="120" stroke="var(--chart-grid)" stroke-width="1"/>
+        <line x1="40" y1="10" x2="40" y2="120" stroke="var(--chart-grid)" stroke-width="1"/>
+        <line x1="40" y1="65" x2="580" y2="65" stroke="var(--danger)" stroke-width="0.7" stroke-dasharray="6,3"/>
+        <text x="585" y="68" fill="var(--danger)" font-size="9">limit</text>
+        <text x="10" y="18" fill="var(--text-secondary)" font-size="9">500</text>
+        <text x="10" y="123" fill="var(--text-secondary)" font-size="9">0</text>
+        <!-- RPM line -->
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2" points="40,104 88,100 136,98 184,96 232,94 280,92 328,88 376,85 424,80 472,84 520,86 568,88"/>
+        <circle cx="568" cy="88" r="3" fill="var(--accent)"/>
+        <text x="40" y="133" fill="var(--text-secondary)" font-size="9">-60m</text>
+        <text x="280" y="133" fill="var(--text-secondary)" font-size="9">-30m</text>
+        <text x="558" y="133" fill="var(--text-secondary)" font-size="9">now</text>
+      </svg>
+    </div>
+    <div class="chart-row col-2">
+      <div class="card">
+        <div class="card-label">Projection</div>
+        <div class="projection safe mt-8">✓ Safe — no exhaustion risk</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Safe Budget Remaining</div>
+        <div style="margin-top:8px">
+          <div class="progress-bar"><div class="progress-fill" style="width:92%;background:var(--success)"></div></div>
+          <div style="display:flex;justify-content:space-between;font-size:11px;margin-top:4px"><span class="text-success font-bold">92%</span><span class="text-muted">8% used</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S3: SESSION STREAM -->
+<section class="section" id="s3">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div class="section-title">Session Stream</div>
+    <div class="section-badge">5</div>
+    <div class="section-collapse">▼</div>
+  </div>
+  <div class="section-body">
+    <div class="chart-container mb-12">
+      <div class="chart-title">Active Sessions</div>
+      <table class="data-table">
+        <thead><tr><th>Session ID</th><th>Repo</th><th>Model</th><th>Turns</th><th>Tokens</th><th>Latency</th><th>Success</th><th>Age</th></tr></thead>
+        <tbody>
+          <tr><td class="font-mono">rooted-on-rhea</td><td class="text-muted">/projects/</td><td>openai</td><td>12</td><td>19.3M</td><td>10.2s</td><td><span class="status retry">retry</span></td><td>2d</td></tr>
+          <tr><td class="font-mono">codex-metrics</td><td class="text-muted">/tools/</td><td>openai</td><td>8</td><td>20M</td><td>8.1s</td><td><span class="status retry">retry</span></td><td>1d</td></tr>
+          <tr><td class="font-mono">codex</td><td class="text-muted">/cli/</td><td>openai</td><td>5</td><td>1.7M</td><td>12.4s</td><td><span class="status retry">retry</span></td><td>3d</td></tr>
+          <tr><td class="font-mono">rooted-on-rhea</td><td class="text-muted">/projects/</td><td>openai</td><td>3</td><td>734.2k</td><td>4.2s</td><td><span class="status retry">retry</span></td><td>4h</td></tr>
+          <tr><td class="font-mono">codex-metrics</td><td class="text-muted">/tools/</td><td>openai</td><td>15</td><td>256.5k</td><td>15.1s</td><td><span class="status unknown">unknown</span></td><td>5h</td></tr>
+          <tr><td class="font-mono">codex-docs</td><td class="text-muted">/docs/</td><td>openai</td><td>6</td><td>1.2M</td><td>6.8s</td><td><span class="status ok">ok</span></td><td>3h</td></tr>
+          <tr><td class="font-mono">codex-infra</td><td class="text-muted">/infra/</td><td>openai</td><td>4</td><td>890k</td><td>5.5s</td><td><span class="status ok">ok</span></td><td>1h</td></tr>
+          <tr><td class="font-mono">rooted-on-rhea</td><td class="text-muted">/projects/</td><td>openai</td><td>2</td><td>420k</td><td>3.1s</td><td><span class="status ok">ok</span></td><td>45m</td></tr>
+          <tr><td class="font-mono">codex-api</td><td class="text-muted">/api/</td><td>openai</td><td>7</td><td>2.1M</td><td>9.4s</td><td><span class="status ok">ok</span></td><td>12h</td></tr>
+          <tr><td class="font-mono">codex-core</td><td class="text-muted">/core/</td><td>openai</td><td>1</td><td>150k</td><td>2.2s</td><td><span class="status ok">ok</span></td><td>15m</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="chart-row col-2">
+      <!-- Turns histogram -->
+      <div class="chart-container">
+        <div class="chart-title">Turns Per Session Distribution</div>
+        <svg width="100%" height="100" viewBox="0 0 300 100">
+          <line x1="30" y1="80" x2="280" y2="80" stroke="var(--chart-grid)" stroke-width="1"/>
+          <rect x="40" y="20" width="36" height="60" rx="2" fill="var(--accent)" opacity="0.8"><title>1-3: 3 sessions</title></rect>
+          <rect x="86" y="40" width="36" height="40" rx="2" fill="var(--accent)" opacity="0.7"><title>4-6: 2 sessions</title></rect>
+          <rect x="132" y="50" width="36" height="30" rx="2" fill="var(--accent)" opacity="0.6"><title>7-10: 1.5 sessions</title></rect>
+          <rect x="178" y="30" width="36" height="50" rx="2" fill="var(--accent)" opacity="0.8"><title>11-15: 2.5 sessions</title></rect>
+          <rect x="224" y="55" width="36" height="25" rx="2" fill="var(--accent)" opacity="0.5"><title>16+: 1 session</title></rect>
+          <text x="58" y="95" fill="var(--text-secondary)" font-size="9" text-anchor="middle">1-3</text>
+          <text x="104" y="95" fill="var(--text-secondary)" font-size="9" text-anchor="middle">4-6</text>
+          <text x="150" y="95" fill="var(--text-secondary)" font-size="9" text-anchor="middle">7-10</text>
+          <text x="196" y="95" fill="var(--text-secondary)" font-size="9" text-anchor="middle">11-15</text>
+          <text x="242" y="95" fill="var(--text-secondary)" font-size="9" text-anchor="middle">16+</text>
+        </svg>
+      </div>
+      <!-- Scatter: tokens per turn -->
+      <div class="chart-container">
+        <div class="chart-title">Tokens Per Turn vs Output/Input Ratio</div>
+        <svg width="100%" height="100" viewBox="0 0 300 100">
+          <line x1="30" y1="80" x2="280" y2="80" stroke="var(--chart-grid)" stroke-width="1"/>
+          <line x1="30" y1="10" x2="30" y2="80" stroke="var(--chart-grid)" stroke-width="1"/>
+          <text x="10" y="18" fill="var(--text-secondary)" font-size="8">1.0</text>
+          <text x="10" y="80" fill="var(--text-secondary)" font-size="8">0</text>
+          <text x="280" y="93" fill="var(--text-secondary)" font-size="8">tokens/turn</text>
+          <circle cx="60" cy="45" r="4" fill="var(--accent)" opacity="0.8"/><circle cx="90" cy="55" r="4" fill="var(--accent)" opacity="0.7"/>
+          <circle cx="120" cy="30" r="4" fill="var(--accent)" opacity="0.9"/><circle cx="150" cy="60" r="4" fill="var(--accent)" opacity="0.6"/>
+          <circle cx="175" cy="40" r="4" fill="var(--accent)" opacity="0.8"/><circle cx="200" cy="50" r="4" fill="var(--info)" opacity="0.9"/>
+          <circle cx="230" cy="65" r="4" fill="var(--info)" opacity="0.7"/><circle cx="260" cy="35" r="4" fill="var(--info)" opacity="0.8"/>
+        </svg>
+      </div>
+    </div>
+    <div class="chart-row col-2 mt-12">
+      <div class="chart-container">
+        <div class="chart-title">Top 5 Longest Sessions</div>
+        <div style="font-size:12px">
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>codex</span><span class="text-muted">3d</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>rooted-on-rhea</span><span class="text-muted">2d</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>codex-metrics</span><span class="text-muted">1d</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>codex-api</span><span class="text-muted">12h</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0"><span>rooted-on-rhea</span><span class="text-muted">4h</span></div>
+        </div>
+      </div>
+      <div class="chart-container">
+        <div class="chart-title">Top 5 Biggest Sessions</div>
+        <div style="font-size:12px">
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>codex-metrics</span><span class="font-bold">20M</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>rooted-on-rhea</span><span class="font-bold">19.3M</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>codex</span><span class="font-bold">1.7M</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span>codex-api</span><span class="font-bold">2.1M</span></div>
+          <div style="display:flex;justify-content:space-between;padding:6px 0"><span>codex-docs</span><span class="font-bold">1.2M</span></div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S4: CACHE EFFICIENCY -->
+<section class="section" id="s4">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div class="section-title">Cache Efficiency</div>
+    <div class="section-badge">4</div>
+    <div class="section-collapse">▼</div>
+  </div>
+  <div class="section-body">
+    <div class="chart-row col-3 mb-12">
+      <!-- Gauge -->
+      <div class="card" style="text-align:center">
+        <div class="chart-title">Hit Ratio</div>
+        <svg width="140" height="90" viewBox="0 0 140 90">
+          <path d="M 20 80 A 50 50 0 0 1 120 80" fill="none" stroke="var(--chart-grid)" stroke-width="10" stroke-linecap="round"/>
+          <path d="M 20 80 A 50 50 0 0 1 115 28" fill="none" stroke="var(--success)" stroke-width="10" stroke-linecap="round"/>
+          <text x="70" y="72" text-anchor="middle" fill="var(--success)" font-size="22" font-weight="700">95%</text>
+        </svg>
+      </div>
+      <div class="card">
+        <div class="card-label">Tokens Saved</div>
+        <div class="card-value text-success" style="font-size:28px;margin-top:8px">296.6M</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Estimated Savings</div>
+        <div class="card-value text-success" style="font-size:28px;margin-top:8px">$89.00</div>
+        <div class="card-sub">based on current rates</div>
+      </div>
+    </div>
+    <div class="chart-row col-2">
+      <div class="chart-container">
+        <div class="chart-title">Uncached Token Trend (24h)</div>
+        <svg width="100%" height="120" viewBox="0 0 300 120">
+          <line x1="30" y1="100" x2="280" y2="100" stroke="var(--chart-grid)" stroke-width="1"/>
+          <line x1="30" y1="10" x2="30" y2="100" stroke="var(--chart-grid)" stroke-width="1"/>
+          <text x="10" y="18" fill="var(--text-secondary)" font-size="8">2M</text>
+          <text x="10" y="100" fill="var(--text-secondary)" font-size="8">0</text>
+          <polyline fill="none" stroke="var(--danger)" stroke-width="1.5" points="30,25 55,30 80,28 105,35 130,32 155,40 180,45 205,50 230,55 255,60 280,68"/>
+          <circle cx="280" cy="68" r="3" fill="var(--danger)"/>
+          <text x="30" y="113" fill="var(--text-secondary)" font-size="8">00:00</text>
+          <text x="155" y="113" fill="var(--text-secondary)" font-size="8">12:00</text>
+          <text x="270" y="113" fill="var(--text-secondary)" font-size="8">now</text>
+        </svg>
+      </div>
+      <div class="chart-container">
+        <div class="chart-title">Hit Ratio by Model</div>
+        <div style="margin-top:12px">
+          <div class="hbar-row">
+            <span class="hbar-label">openai</span>
+            <div class="hbar-track"><div class="hbar-fill" style="width:95%;background:var(--success)">95%</div></div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S5: CONTEXT PRESSURE -->
+<section class="section" id="s5">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div class="section-title">Context Pressure</div>
+    <div class="section-badge">3</div>
+    <div class="section-collapse">▼</div>
+  </div>
+  <div class="section-body">
+    <div class="chart-row col-2 mb-12">
+      <div class="card" style="text-align:center">
+        <div class="chart-title">Avg Context Usage</div>
+        <svg width="160" height="90" viewBox="0 0 160 90">
+          <path d="M 25 80 A 55 55 0 0 1 135 80" fill="none" stroke="var(--chart-grid)" stroke-width="12" stroke-linecap="round"/>
+          <path d="M 25 80 A 55 55 0 0 1 44 36" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round"/>
+          <text x="80" y="72" text-anchor="middle" fill="var(--accent)" font-size="24" font-weight="700">34%</text>
+        </svg>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="chart-title">Max Context Usage</div>
+        <svg width="160" height="90" viewBox="0 0 160 90">
+          <path d="M 25 80 A 55 55 0 0 1 135 80" fill="none" stroke="var(--chart-grid)" stroke-width="12" stroke-linecap="round"/>
+          <path d="M 25 80 A 55 55 0 0 1 133 42" fill="none" stroke="var(--danger)" stroke-width="12" stroke-linecap="round"/>
+          <text x="80" y="72" text-anchor="middle" fill="var(--danger)" font-size="24" font-weight="700">87%</text>
+        </svg>
+      </div>
+    </div>
+    <div class="chart-container mb-12">
+      <div class="chart-title">Turns Above Context Thresholds</div>
+      <div class="hbar-row">
+        <span class="hbar-label" style="width:80px">50%: 12</span>
+        <div class="hbar-track"><div class="hbar-fill" style="width:48%;background:var(--warning)">12 turns</div></div>
+      </div>
+      <div class="hbar-row">
+        <span class="hbar-label" style="width:80px">75%: 4</span>
+        <div class="hbar-track"><div class="hbar-fill" style="width:16%;background:var(--danger)">4 turns</div></div>
+      </div>
+      <div class="hbar-row">
+        <span class="hbar-label" style="width:80px">90%: 1</span>
+        <div class="hbar-track"><div class="hbar-fill" style="width:4%;background:var(--danger);color:var(--text-primary);text-align:left;padding-left:6px">1</div></div>
+      </div>
+    </div>
+    <div class="chart-container mb-12">
+      <div class="chart-title">Compaction Candidates</div>
+      <table class="data-table">
+        <thead><tr><th>Session</th><th>Current %</th><th>Turns to Limit</th></tr></thead>
+        <tbody>
+          <tr><td class="font-mono">rooted-on-rhea</td><td><span class="text-danger font-bold">87%</span></td><td>~2 turns</td></tr>
+          <tr><td class="font-mono">codex</td><td><span class="text-warning font-bold">82%</span></td><td>~3 turns</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="chart-container">
+      <div class="chart-title">Context Growth Per Turn (avg, last 50 sessions)</div>
+      <svg width="100%" height="120" viewBox="0 0 600 120">
+        <line x1="40" y1="100" x2="580" y2="100" stroke="var(--chart-grid)" stroke-width="1"/>
+        <line x1="40" y1="10" x2="40" y2="100" stroke="var(--chart-grid)" stroke-width="1"/>
+        <text x="10" y="15" fill="var(--text-secondary)" font-size="8">90%</text>
+        <text x="10" y="100" fill="var(--text-secondary)" font-size="8">0%</text>
+        <line x1="40" y1="20" x2="580" y2="20" stroke="var(--danger)" stroke-width="0.5" stroke-dasharray="4" opacity="0.5"/>
+        <text x="585" y="23" fill="var(--danger)" font-size="8">limit</text>
+        <polyline fill="none" stroke="var(--accent)" stroke-width="1.5" stroke-linejoin="round" points="40,95 80,92 120,88 160,85 200,80 240,74 280,68 320,62 360,56 400,48 440,45 480,40 520,35 560,30"/>
+      </svg>
+    </div>
+  </div>
+</section>
+
+<!-- S6: TOOL RELIABILITY -->
+<section class="section" id="s6">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div class="section-title">Tool Reliability</div>
+    <div class="section-badge">4</div>
+    <div class="section-collapse">▼</div>
+  </div>
+  <div class="section-body">
+    <div class="chart-container mb-12">
+      <div class="chart-title">Calls by Tool</div>
+      <div class="hbar-row">
+        <span class="hbar-label">exec_command</span>
+        <div class="hbar-track"><div class="hbar-fill" style="width:100%;background:var(--accent)">45</div></div>
+      </div>
+      <div class="hbar-row">
+        <span class="hbar-label">web_search</span>
+        <div class="hbar-track"><div class="hbar-fill" style="width:26.7%;background:var(--info)">12</div></div>
+      </div>
+      <div class="hbar-row">
+        <span class="hbar-label">function_call</span>
+        <div class="hbar-track"><div class="hbar-fill" style="width:17.8%;background:var(--success)">8</div></div>
+      </div>
+    </div>
+    <div class="chart-container mb-12">
+      <div class="chart-title">Failed Commands</div>
+      <table class="data-table">
+        <thead><tr><th>Tool</th><th>Command</th><th>Session</th><th>Error</th><th>Time</th></tr></thead>
+        <tbody>
+          <tr><td>exec_command</td><td class="font-mono">git push</td><td>rooted-on-rhea</td><td><span class="text-danger">exit 1</span></td><td>10:04</td></tr>
+          <tr><td>exec_command</td><td class="font-mono">npm test</td><td>codex-metrics</td><td><span class="text-danger">exit 1</span></td><td>09:52</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="chart-container mb-12">
+      <div class="chart-title">Failure Rate by Tool</div>
+      <div class="hbar-row">
+        <span class="hbar-label">exec_command</span>
+        <div class="hbar-track"><div class="hbar-fill" style="width:4.4%;background:var(--danger)">4.4%</div></div>
+      </div>
+      <div class="hbar-row">
+        <span class="hbar-label">web_search</span>
+        <div class="hbar-track"><div class="hbar-fill" style="width:0.5%;min-width:4px;background:var(--success)">0%</div></div>
+      </div>
+      <div class="hbar-row">
+        <span class="hbar-label">function_call</span>
+        <div class="hbar-track"><div class="hbar-fill" style="width:0.5%;min-width:4px;background:var(--success)">0%</div></div>
+      </div>
+    </div>
+    <div class="chart-container mb-12">
+      <div class="chart-title">Slowest Commands</div>
+      <table class="data-table">
+        <thead><tr><th>Tool</th><th>Command</th><th>p95 Latency</th><th>Count</th></tr></thead>
+        <tbody>
+          <tr><td>exec_command</td><td class="font-mono">npm test</td><td><span class="text-warning">15.1s</span></td><td>3</td></tr>
+          <tr><td>web_search</td><td class="font-mono">search</td><td>8.2s</td><td>12</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="card">
+      <div class="chart-title">Retry-Prone Sessions</div>
+      <div style="font-size:12px">
+        <div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid var(--border)"><span class="font-mono">rooted-on-rhea</span><span class="text-warning font-bold">4 retries</span></div>
+        <div style="display:flex;justify-content:space-between;padding:6px 0"><span class="font-mono">codex-metrics</span><span class="text-warning font-bold">3 retries</span></div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S7: REPO / WORKSPACE MAP -->
+<section class="section" id="s7">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div class="section-title">Repo / Workspace Map</div>
+    <div class="section-badge">4</div>
+    <div class="section-collapse">▼</div>
+  </div>
+  <div class="section-body">
+    <div class="chart-container mb-12">
+      <div class="chart-title">Token Distribution by Repo</div>
+      <div style="display:flex;gap:3px;height:60px;align-items:flex-end">
+        <div style="flex:220;background:var(--accent);border-radius:3px 3px 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:4px"><span style="font-size:11px;font-weight:700">/projects/</span><span style="font-size:10px;color:var(--text-secondary)">220M</span></div>
+        <div style="flex:20;background:var(--info);border-radius:3px 3px 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:4px"><span style="font-size:9px;font-weight:700">/tools/</span><span style="font-size:8px;color:var(--text-secondary)">20.3M</span></div>
+        <div style="flex:2;background:var(--success);border-radius:3px 3px 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:4px"><span style="font-size:9px;font-weight:700">/cli/</span><span style="font-size:8px;color:var(--text-secondary)">1.7M</span></div>
+        <div style="flex:1;background:var(--warning);border-radius:3px 3px 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:4px"><span style="font-size:8px">/other/</span><span style="font-size:8px;color:var(--text-secondary)">256k</span></div>
+      </div>
+    </div>
+    <div class="chart-container mb-12">
+      <div class="chart-title">Failures by Repo (24h)</div>
+      <div style="display:flex;gap:3px;height:32px;align-items:flex-end">
+        <div style="width:55%;background:var(--danger);border-radius:3px 3px 0 0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;padding:4px">/projects/ — 11</div>
+        <div style="width:30%;background:rgba(255,107,107,.6);border-radius:3px 3px 0 0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;padding:4px">/tools/ — 6</div>
+        <div style="width:15%;background:rgba(255,107,107,.4);border-radius:3px 3px 0 0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;padding:4px">/cli/ — 3</div>
+      </div>
+    </div>
+    <div class="chart-container mb-12">
+      <div class="chart-title">Latency by Repo</div>
+      <table class="data-table">
+        <thead><tr><th>Repo</th><th>Avg</th><th>p95</th><th>Count</th></tr></thead>
+        <tbody>
+          <tr><td>/projects/</td><td>8.5s</td><td class="text-warning">15.1s</td><td>45</td></tr>
+          <tr><td>/tools/</td><td>9.2s</td><td>12.4s</td><td>23</td></tr>
+          <tr><td>/cli/</td><td>10.1s</td><td class="text-warning">14.2s</td><td>12</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="chart-row col-2">
+      <div class="card">
+        <div class="card-label">Most Expensive Repo</div>
+        <div class="card-value text-accent" style="margin-top:6px">/projects/</div>
+        <div class="card-sub">220M tokens</div>
+      </div>
+      <div class="card">
+        <div class="card-label">Most Expensive Session</div>
+        <div class="card-value text-accent" style="margin-top:6px">rooted-on-rhea</div>
+        <div class="card-sub">19.3M tokens</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S8: OPENAI API BILLING -->
+<section class="section" id="s8">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div class="section-title">OpenAI API Billing</div>
+    <div class="section-badge">4</div>
+    <div class="section-collapse">▼</div>
+  </div>
+  <div class="section-body">
+    <div class="chart-container mb-12">
+      <div class="chart-title">Cost by Day (last 14 days)</div>
+      <svg width="100%" height="130" viewBox="0 0 600 130">
+        <line x1="40" y1="110" x2="580" y2="110" stroke="var(--chart-grid)" stroke-width="1"/>
+        <line x1="40" y1="10" x2="40" y2="110" stroke="var(--chart-grid)" stroke-width="1"/>
+        <text x="10" y="18" fill="var(--text-secondary)" font-size="8">$45</text>
+        <text x="10" y="110" fill="var(--text-secondary)" font-size="8">$0</text>
+        <polyline fill="none" stroke="var(--accent)" stroke-width="2" points="40,105 80,98 120,90 160,95 200,82 240,78 280,72 320,60 360,55 400,42 440,38 480,45 520,35 560,30"/>
+        <circle cx="560" cy="30" r="3" fill="var(--accent)"/>
+        <text x="40" y="123" fill="var(--text-secondary)" font-size="8">Apr 20</text>
+        <text x="200" y="123" fill="var(--text-secondary)" font-size="8">Apr 26</text>
+        <text x="360" y="123" fill="var(--text-secondary)" font-size="8">May 01</text>
+        <text x="530" y="123" fill="var(--text-secondary)" font-size="8">May 03</text>
+      </svg>
+    </div>
+    <div class="chart-container mb-12">
+      <div class="chart-title">Cost Breakdown</div>
+      <div class="toggle-tabs">
+        <button class="toggle-tab active" onclick="toggleTab(this)">By Project</button>
+        <button class="toggle-tab" onclick="toggleTab(this)">By API Key</button>
+      </div>
+      <div class="stacked-bar">
+        <div style="width:70%;background:var(--accent)">/projects/ — $8.75</div>
+        <div style="width:20%;background:var(--info)">/tools/ — $2.50</div>
+        <div style="width:10%;background:var(--success)">/cli/ — $1.25</div>
+      </div>
+    </div>
+    <div class="chart-container mb-12">
+      <div class="chart-title">Completions by Model</div>
+      <table class="data-table">
+        <thead><tr><th>Model</th><th>Project</th><th>User</th><th>Key</th><th>Tier</th><th>Tokens</th><th>Cost</th></tr></thead>
+        <tbody>
+          <tr><td>gpt-4</td><td>default</td><td>suwan</td><td>sk-xxx</td><td><span class="status info">standard</span></td><td>312M</td><td class="font-bold">$12.50</td></tr>
+        </tbody>
+      </table>
+    </div>
+    <div class="chart-row col-2">
+      <div class="card">
+        <div class="card-label">Total Requests (24h)</div>
+        <div class="card-value" style="font-size:28px;margin-top:8px">3,327</div>
+      </div>
+      <div class="card" style="text-align:center">
+        <div class="chart-title">Batch vs Non-Batch</div>
+        <svg width="100" height="100" viewBox="0 0 100 100">
+          <circle cx="50" cy="50" r="40" fill="none" stroke="var(--accent)" stroke-width="14"/>
+          <text x="50" y="48" text-anchor="middle" fill="var(--text-primary)" font-size="14" font-weight="700">0%</text>
+          <text x="50" y="62" text-anchor="middle" fill="var(--text-secondary)" font-size="9">batch</text>
+        </svg>
+        <div style="font-size:11px;margin-top:4px"><span style="color:var(--accent)">●</span> non-batch 100%</div>
+      </div>
+    </div>
+  </div>
+</section>
+
+<!-- S9: OTHER OPENAI PRODUCTS -->
+<section class="section" id="s9">
+  <div class="section-header" onclick="toggleSection(this)">
+    <div class="section-title">Other OpenAI Products</div>
+    <div class="section-badge">7</div>
+    <div class="section-collapse">▼</div>
+  </div>
+  <div class="section-body">
+    <div class="card-grid col-3">
+      <div class="card">
+        <div class="card-label">Embeddings</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px">
+          <div><div class="card-value">0</div><div class="card-sub">tokens</div></div>
+          <div style="text-align:right"><div style="font-size:16px;font-weight:700">$0.00</div></div>
+        </div>
+        <svg width="100%" height="20" viewBox="0 0 100 20" style="margin-top:6px"><polyline fill="none" stroke="var(--text-secondary)" stroke-width="1" points="0,10 15,10 30,10 45,10 60,10 75,10 90,10 100,10"/></svg>
+      </div>
+      <div class="card">
+        <div class="card-label">Images</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px">
+          <div><div class="card-value">0</div><div class="card-sub">generations</div></div>
+          <div style="text-align:right"><div style="font-size:16px;font-weight:700">$0.00</div></div>
+        </div>
+        <svg width="100%" height="20" viewBox="0 0 100 20" style="margin-top:6px"><polyline fill="none" stroke="var(--text-secondary)" stroke-width="1" points="0,10 15,10 30,10 45,10 60,10 75,10 90,10 100,10"/></svg>
+      </div>
+      <div class="card">
+        <div class="card-label">Audio Transcription</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px">
+          <div><div class="card-value">0<span style="font-size:12px;color:var(--text-secondary)">s</span></div><div class="card-sub">duration</div></div>
+          <div style="text-align:right"><div style="font-size:16px;font-weight:700">$0.00</div></div>
+        </div>
+        <svg width="100%" height="20" viewBox="0 0 100 20" style="margin-top:6px"><polyline fill="none" stroke="var(--text-secondary)" stroke-width="1" points="0,10 15,10 30,10 45,10 60,10 75,10 90,10 100,10"/></svg>
+      </div>
+      <div class="card">
+        <div class="card-label">Audio Speech</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px">
+          <div><div class="card-value">0<span style="font-size:12px;color:var(--text-secondary)">chars</span></div><div class="card-sub">characters</div></div>
+          <div style="text-align:right"><div style="font-size:16px;font-weight:700">$0.00</div></div>
+        </div>
+        <svg width="100%" height="20" viewBox="0 0 100 20" style="margin-top:6px"><polyline fill="none" stroke="var(--text-secondary)" stroke-width="1" points="0,10 15,10 30,10 45,10 60,10 75,10 90,10 100,10"/></svg>
+      </div>
+      <div class="card">
+        <div class="card-label">Code Interpreter</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px">
+          <div><div class="card-value">0</div><div class="card-sub">sessions</div></div>
+          <div style="text-align:right"><div style="font-size:16px;font-weight:700">$0.00</div></div>
+        </div>
+        <svg width="100%" height="20" viewBox="0 0 100 20" style="margin-top:6px"><polyline fill="none" stroke="var(--text-secondary)" stroke-width="1" points="0,10 15,10 30,10 45,10 60,10 75,10 90,10 100,10"/></svg>
+      </div>
+      <div class="card">
+        <div class="card-label">Vector Stores</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px">
+          <div><div class="card-value">0<span style="font-size:12px;color:var(--text-secondary)">B</span></div><div class="card-sub">bytes stored</div></div>
+          <div style="text-align:right"><div style="font-size:16px;font-weight:700">$0.00</div></div>
+        </div>
+        <svg width="100%" height="20" viewBox="0 0 100 20" style="margin-top:6px"><polyline fill="none" stroke="var(--text-secondary)" stroke-width="1" points="0,10 15,10 30,10 45,10 60,10 75,10 90,10 100,10"/></svg>
+      </div>
+      <div class="card">
+        <div class="card-label">Moderation</div>
+        <div style="display:flex;justify-content:space-between;align-items:baseline;margin-top:8px">
+          <div><div class="card-value">0</div><div class="card-sub">requests</div></div>
+          <div style="text-align:right"><div style="font-size:16px;font-weight:700">$0.00</div></div>
+        </div>
+        <svg width="100%" height="20" viewBox="0 0 100 20" style="margin-top:6px"><polyline fill="none" stroke="var(--text-secondary)" stroke-width="1" points="0,10 15,10 30,10 45,10 60,10 75,10 90,10 100,10"/></svg>
+      </div>
+    </div>
+  </div>
+</section>
+
+</main>
+</div>
+
+<script>
+// Collapsible sections
+function toggleSection(header){
+  const section=header.parentElement;
+  section.classList.toggle('collapsed');
+}
+
+// Toggle tabs
+function toggleTab(tab){
+  const tabs=tab.parentElement.querySelectorAll('.toggle-tab');
+  tabs.forEach(t=>t.classList.remove('active'));
+  tab.classList.add('active');
+}
+
+// Active nav tracking
+const sections=document.querySelectorAll('.section');
+const navLinks=document.querySelectorAll('.nav-link');
+const observer=new IntersectionObserver(entries=>{
+  entries.forEach(entry=>{
+    if(entry.isIntersecting){
+      const id=entry.target.id;
+      navLinks.forEach(l=>{
+        l.classList.remove('active');
+        if(l.getAttribute('href')==='#'+id) l.classList.add('active');
+      });
+    }
+  });
+},{rootMargin:'-60px 0px -60% 0px',threshold:0});
+sections.forEach(s=>observer.observe(s));
+
+// Refresh timestamp
+function refreshNow(){
+  document.getElementById('timestamp').textContent='Updated just now';
+  setTimeout(()=>{document.getElementById('timestamp').textContent='Updated 30s ago'},30000);
+}
+function exportCSV(){alert('CSV export would trigger here')}
+
+// Alert pills — conditionally shown (all hidden by default since thresholds not breached)
+// To show an alert: remove .hidden class, e.g.:
+// document.getElementById('alert-rate').classList.remove('hidden');
+</script>
+</body>
+</html>
