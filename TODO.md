@@ -86,7 +86,7 @@ Agent loop format:
     - Tooltips show both date and time.
     - `?` tooltips are discoverable but not noisy.
 
-- [ ] TASK-014: Faster polling (optional)
+- [x] TASK-014: Faster polling (optional)
   - Reduce poll interval from 3s to 1s for snappier real-time feel.
   - Evaluate if SSE (Server-Sent Events) is worth it over polling.
   - Acceptance:
