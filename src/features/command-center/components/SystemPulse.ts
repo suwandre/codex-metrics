@@ -36,15 +36,20 @@ export function renderSystemPulse(kpis: KpiMetric[]): string {
 function renderKpiTile(kpi: KpiMetric): string {
   const colorClass = kpi.color === "default" ? "" : ` text-${kpi.color}`;
   const deltaClass = kpi.deltaDirection;
-  const unitHtml = kpi.unit ? `<span style="font-size:14px;color:var(--text-secondary)">${escapeHtml(kpi.unit)}</span>` : "";
-  const smallUnit = kpi.label === "Throughput" ? `<span style="font-size:11px;color:var(--text-secondary)">/min</span>` : "";
+  const unitHtml = kpi.unit
+    ? `<span style="font-size:14px;color:var(--text-secondary)">${escapeHtml(kpi.unit)}</span>`
+    : "";
+  const smallUnit =
+    kpi.label === "Throughput"
+      ? `<span style="font-size:11px;color:var(--text-secondary)">/min</span>`
+      : "";
 
   return `
     <div class="kpi-tile">
       <div class="kpi-big${colorClass}">${escapeHtml(kpi.value)}${unitHtml}${smallUnit}</div>
       <div class="kpi-label">${escapeHtml(kpi.label)}</div>
       <div class="kpi-delta ${deltaClass}">${deltaArrow[kpi.deltaDirection]} ${escapeHtml(kpi.delta)}</div>
-      <div class="kpi-sparkline">${sparklineSvg(kpi.sparkline, colorVar[kpi.color] ?? "var(--text-secondary)")}</div>
+      ${sparklineSvg(kpi.sparkline, colorVar[kpi.color] ?? "var(--text-secondary)", 120, 28, kpi.timestamps ?? [], `${kpi.value}${kpi.unit ?? ""}`)}
     </div>
   `;
 }

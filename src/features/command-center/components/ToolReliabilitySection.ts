@@ -32,10 +32,11 @@ export function renderToolReliabilitySection(data: CommandCenterData["tools"]): 
           <table class="data-table">
             <thead><tr><th>Tool</th><th>Command</th><th>Session</th><th>Error</th><th>Time</th></tr></thead>
             <tbody>
-              ${data.failed.length > 0
-                ? data.failed
-                    .map(
-                      (f) => `
+              ${
+                data.failed.length > 0
+                  ? data.failed
+                      .map(
+                        (f) => `
                 <tr>
                   <td>${escapeHtml(f.tool)}</td>
                   <td class="font-mono">${escapeHtml(f.command)}</td>
@@ -44,9 +45,10 @@ export function renderToolReliabilitySection(data: CommandCenterData["tools"]): 
                   <td>${escapeHtml(f.time)}</td>
                 </tr>
               `,
-                    )
-                    .join("")
-                : `<tr><td colspan="5" style="text-align:center;color:var(--text-secondary)">No failed commands</td></tr>`}
+                      )
+                      .join("")
+                  : `<tr><td colspan="5" style="text-align:center;color:var(--text-secondary)">No failed commands</td></tr>`
+              }
             </tbody>
           </table>
         </div>
@@ -70,10 +72,11 @@ export function renderToolReliabilitySection(data: CommandCenterData["tools"]): 
           <table class="data-table">
             <thead><tr><th>Tool</th><th>Command</th><th>p95 Latency</th><th>Count</th></tr></thead>
             <tbody>
-              ${data.slowest.length > 0
-                ? data.slowest
-                    .map(
-                      (s) => `
+              ${
+                data.slowest.length > 0
+                  ? data.slowest
+                      .map(
+                        (s) => `
                 <tr>
                   <td>${escapeHtml(s.tool)}</td>
                   <td class="font-mono">${escapeHtml(s.command)}</td>
@@ -81,27 +84,30 @@ export function renderToolReliabilitySection(data: CommandCenterData["tools"]): 
                   <td>${s.count}</td>
                 </tr>
               `,
-                    )
-                    .join("")
-                : `<tr><td colspan="4" style="text-align:center;color:var(--text-secondary)">No data</td></tr>`}
+                      )
+                      .join("")
+                  : `<tr><td colspan="4" style="text-align:center;color:var(--text-secondary)">No data</td></tr>`
+              }
             </tbody>
           </table>
         </div>
         <div class="card">
           <div class="chart-title">Retry-Prone Sessions</div>
           <div style="font-size:12px">
-            ${data.retryProne.length > 0
-              ? data.retryProne
-                  .map(
-                    (r, i, arr) => `
+            ${
+              data.retryProne.length > 0
+                ? data.retryProne
+                    .map(
+                      (r, i, arr) => `
               <div style="display:flex;justify-content:space-between;padding:6px 0;${i < arr.length - 1 ? "border-bottom:1px solid var(--border)" : ""}">
                 <span class="font-mono">${escapeHtml(r.session)}</span>
                 <span class="text-warning font-bold">${r.retries} retries</span>
               </div>
             `,
-                  )
-                  .join("")
-              : `<div style="color:var(--text-secondary);padding:6px 0">No retry-prone sessions</div>`}
+                    )
+                    .join("")
+                : `<div style="color:var(--text-secondary);padding:6px 0">No retry-prone sessions</div>`
+            }
           </div>
         </div>
       </div>

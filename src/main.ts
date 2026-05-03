@@ -102,7 +102,9 @@ function setupInteractions() {
     tab.addEventListener("click", () => {
       const parent = tab.closest(".toggle-tabs");
       if (!parent) return;
-      parent.querySelectorAll(".toggle-tab").forEach((t) => t.classList.remove("active"));
+      parent.querySelectorAll(".toggle-tab").forEach((t) => {
+        t.classList.remove("active");
+      });
       tab.classList.add("active");
     });
   });
@@ -124,7 +126,9 @@ function setupInteractions() {
     },
     { rootMargin: "-60px 0px -60% 0px", threshold: 0 },
   );
-  sections.forEach((s) => observer.observe(s));
+  sections.forEach((s) => {
+    observer.observe(s);
+  });
 
   // Refresh now button
   const btnRefresh = document.getElementById("btn-refresh");
@@ -144,4 +148,62 @@ function setupInteractions() {
       console.log("CSV export triggered");
     });
   }
+
+  setupSparklines();
+}
+
+// Sparkline hover
+function setupSparklines() {
+  document.querySelectorAll(".kpi-sparkline").forEach((container) => {
+    const wrapper = container as HTMLElement;
+    const rects = wrapper.querySelectorAll("rect[data-idx]");
+    const guide = wrapper.querySelector(".sparkline-guide") as SVGLineElement | null;
+    const dot = wrapper.querySelector(".sparkline-dot") as SVGCircleElement | null;
+    const tooltip = wrapper.querySelector(".sparkline-tooltip") as HTMLElement | null;
+    const pointsData = wrapper.dataset.points;
+    const timestampsData = wrapper.dataset.timestamps;
+    const valueLabel = wrapper.dataset.value ?? "";
+    const color = wrapper.dataset.color ?? "var(--text-secondary)";
+
+    if (!pointsData || !timestampsData || !guide || !dot || !tooltip) return;
+
+    const points: { x: number; y: number }[] = JSON.parse(pointsData);
+    const timestamps: string[] = JSON.parse(timestampsData);
+
+    rects.forEach((rect) => {
+      rect.addEventListener("mouseenter", (e) => {
+        const idx = Number((e.target as HTMLElement).dataset.idx);
+        const pt = points[idx];
+        if (!pt) return;
+
+        guide.setAttribute("x1", String(pt.x));
+        guide.setAttribute("x2", String(pt.x));
+        guide.style.opacity = "1";
+
+        dot.setAttribute("cx", String(pt.x));
+        dot.setAttribute("cy", String(pt.y));
+        dot.setAttribute("fill", color);
+        dot.style.opacity = "1";
+
+        const valueEl = tooltip.querySelector(".sparkline-tooltip-value") as HTMLElement;
+        const timeEl = tooltip.querySelector(".sparkline-tooltip-time") as HTMLElement;
+        if (valueEl) valueEl.textContent = valueLabel;
+        if (timeEl) timeEl.textContent = timestamps[idx] ?? "";
+
+        // Position tooltip above the point, but flip if near top
+        const tooltipHeight = tooltip.offsetHeight || 40;
+        let top = pt.y - tooltipHeight - 6;
+        if (top < 0) top = pt.y + 10; // flip below
+        tooltip.style.left = `${pt.x}px`;
+        tooltip.style.top = `${top}px`;
+        tooltip.style.opacity = "1";
+      });
+
+      rect.addEventListener("mouseleave", () => {
+        guide.style.opacity = "0";
+        dot.style.opacity = "0";
+        tooltip.style.opacity = "0";
+      });
+    });
+  });
 }

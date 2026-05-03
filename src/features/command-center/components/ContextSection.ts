@@ -15,7 +15,7 @@ export function renderContextSection(data: CommandCenterData["context"]): string
             <div class="chart-title">Avg Context Usage</div>
             <svg width="160" height="90" viewBox="0 0 160 90">
               <path d="M 25 80 A 55 55 0 0 1 135 80" fill="none" stroke="var(--chart-grid)" stroke-width="12" stroke-linecap="round"/>
-              <path d="M 25 80 A 55 55 0 0 1 ${25 + 110 * data.avgUsage / 100} ${80 - 55 * Math.sin(Math.PI * data.avgUsage / 100)}" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round"/>
+              <path d="M 25 80 A 55 55 0 0 1 ${25 + (110 * data.avgUsage) / 100} ${80 - 55 * Math.sin((Math.PI * data.avgUsage) / 100)}" fill="none" stroke="var(--accent)" stroke-width="12" stroke-linecap="round"/>
               <text x="80" y="72" text-anchor="middle" fill="var(--accent)" font-size="24" font-weight="700">${data.avgUsage}%</text>
             </svg>
           </div>
@@ -23,7 +23,7 @@ export function renderContextSection(data: CommandCenterData["context"]): string
             <div class="chart-title">Max Context Usage</div>
             <svg width="160" height="90" viewBox="0 0 160 90">
               <path d="M 25 80 A 55 55 0 0 1 135 80" fill="none" stroke="var(--chart-grid)" stroke-width="12" stroke-linecap="round"/>
-              <path d="M 25 80 A 55 55 0 0 1 ${25 + 110 * data.maxUsage / 100} ${80 - 55 * Math.sin(Math.PI * data.maxUsage / 100)}" fill="none" stroke="var(--danger)" stroke-width="12" stroke-linecap="round"/>
+              <path d="M 25 80 A 55 55 0 0 1 ${25 + (110 * data.maxUsage) / 100} ${80 - 55 * Math.sin((Math.PI * data.maxUsage) / 100)}" fill="none" stroke="var(--danger)" stroke-width="12" stroke-linecap="round"/>
               <text x="80" y="72" text-anchor="middle" fill="var(--danger)" font-size="24" font-weight="700">${data.maxUsage}%</text>
             </svg>
           </div>

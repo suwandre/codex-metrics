@@ -34,14 +34,12 @@ export function renderBillingSection(data: CommandCenterData["billing"]): string
           </div>
           <div class="stacked-bar">
             ${data.breakdown
-              .map(
-                (b, i) => {
-                  const colors = ["var(--accent)", "var(--info)", "var(--success)", "var(--warning)"];
-                  return `
+              .map((b, i) => {
+                const colors = ["var(--accent)", "var(--info)", "var(--success)", "var(--warning)"];
+                return `
                 <div style="width:${b.value}%;background:${colors[i % colors.length]}">${escapeHtml(b.label)} — ${escapeHtml(b.cost)}</div>
               `;
-                },
-              )
+              })
               .join("")}
           </div>
         </div>
@@ -50,10 +48,11 @@ export function renderBillingSection(data: CommandCenterData["billing"]): string
           <table class="data-table">
             <thead><tr><th>Model</th><th>Project</th><th>User</th><th>Key</th><th>Tier</th><th>Tokens</th><th>Cost</th></tr></thead>
             <tbody>
-              ${data.completions.length > 0
-                ? data.completions
-                    .map(
-                      (c) => `
+              ${
+                data.completions.length > 0
+                  ? data.completions
+                      .map(
+                        (c) => `
                 <tr>
                   <td>${escapeHtml(c.model)}</td>
                   <td>${escapeHtml(c.project)}</td>
@@ -64,9 +63,10 @@ export function renderBillingSection(data: CommandCenterData["billing"]): string
                   <td class="font-bold">${escapeHtml(c.cost)}</td>
                 </tr>
               `,
-                    )
-                    .join("")
-                : `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary)">No API key configured</td></tr>`}
+                      )
+                      .join("")
+                  : `<tr><td colspan="7" style="text-align:center;color:var(--text-secondary)">No API key configured</td></tr>`
+              }
             </tbody>
           </table>
         </div>

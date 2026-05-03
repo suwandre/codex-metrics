@@ -136,6 +136,7 @@ export function toCommandCenterData(
         delta: `+${formatPercent(Math.max(0, successRate - 0.89))}`,
         deltaDirection: "up",
         sparkline: [85, 87, 88, 89, 90, 91, 91],
+        timestamps: generateTimestamps(7),
       },
       {
         label: "Latency p95",
@@ -145,6 +146,7 @@ export function toCommandCenterData(
         delta: `-${formatDuration(Math.max(0, metrics.latency.p95Ms - 2900))}`,
         deltaDirection: "down",
         sparkline: metrics.latency.samples > 0 ? [8, 7, 6, 5, 3, 3, 3] : [0, 0, 0, 0, 0, 0, 0],
+        timestamps: generateTimestamps(7),
       },
       {
         label: "Throughput",
@@ -154,6 +156,7 @@ export function toCommandCenterData(
         delta: "+5%",
         deltaDirection: "up",
         sparkline: [28, 30, 31, 32, 33, 33, 34],
+        timestamps: generateTimestamps(7),
       },
       {
         label: "Active Sessions",
@@ -162,6 +165,7 @@ export function toCommandCenterData(
         delta: sessions.length === 0 ? "— none" : "stable",
         deltaDirection: "neutral",
         sparkline: sessions.length > 0 ? [2, 2, 3, 3, 3, 3, 3] : [0, 0, 0, 0, 0, 0, 0],
+        timestamps: generateTimestamps(7),
       },
       {
         label: "Daily Burn / 95% limit",
@@ -170,22 +174,29 @@ export function toCommandCenterData(
         delta: "",
         deltaDirection: "neutral",
         sparkline: [15, 28, 67, 180, 55, 210, 12],
+        timestamps: generateTimestamps(7),
       },
       {
         label: "Rate Limit — weekly / 5h",
-        value: metrics.rateLimitWindows[0] ? `${Math.round(metrics.rateLimitWindows[0].usedPercent)}%` : "0%",
+        value: metrics.rateLimitWindows[0]
+          ? `${Math.round(metrics.rateLimitWindows[0].usedPercent)}%`
+          : "0%",
         color: "success",
-        delta: metrics.rateLimitWindows[1] ? ` / ${Math.round(metrics.rateLimitWindows[1].usedPercent)}%` : "",
+        delta: metrics.rateLimitWindows[1]
+          ? ` / ${Math.round(metrics.rateLimitWindows[1].usedPercent)}%`
+          : "",
         deltaDirection: "neutral",
         sparkline: [2, 2, 4, 4, 4, 2, 2],
+        timestamps: generateTimestamps(7),
       },
       {
         label: "Current RPM",
-        value: String(Math.round(metrics.throughput.totalTokensPerMinute / 1000 * 60)),
+        value: String(Math.round((metrics.throughput.totalTokensPerMinute / 1000) * 60)),
         color: "accent",
         delta: "",
         deltaDirection: "neutral",
         sparkline: [80, 90, 100, 110, 114, 112, 115],
+        timestamps: generateTimestamps(7),
       },
       {
         label: "Error Rate (5m)",
@@ -194,6 +205,7 @@ export function toCommandCenterData(
         delta: "-0.5%",
         deltaDirection: "down",
         sparkline: [5, 4, 4, 3, 3, 2, 2],
+        timestamps: generateTimestamps(7),
       },
     ],
     tokenBurn: {
@@ -226,16 +238,18 @@ export function toCommandCenterData(
       ),
     },
     sessionStream: {
-      rows: sessions.slice(0, 10).map((s): SessionRow => ({
-        id: s.name,
-        repo: s.cwd ? s.cwd.split("/").filter(Boolean).pop() ?? "" : "",
-        model: s.model,
-        turns: Math.max(1, Math.round(s.totalTokens / 1_000_000)),
-        tokens: formatCompactNumber(s.totalTokens),
-        latency: "—",
-        success: toSessionStatus(s.status),
-        age: s.lastSeenAt ? formatTimeAgo(new Date(s.lastSeenAt)) : "—",
-      })),
+      rows: sessions.slice(0, 10).map(
+        (s): SessionRow => ({
+          id: s.name,
+          repo: s.cwd ? (s.cwd.split("/").filter(Boolean).pop() ?? "") : "",
+          model: s.model,
+          turns: Math.max(1, Math.round(s.totalTokens / 1_000_000)),
+          tokens: formatCompactNumber(s.totalTokens),
+          latency: "—",
+          success: toSessionStatus(s.status),
+          age: s.lastSeenAt ? formatTimeAgo(new Date(s.lastSeenAt)) : "—",
+        }),
+      ),
       turnHistogram: [
         { label: "1-3", value: 3 },
         { label: "4-6", value: 2 },
@@ -261,8 +275,8 @@ export function toCommandCenterData(
       tokensSaved: formatCompactNumber(tokensSaved),
       savings: `$${estimatedSavings.toFixed(2)}`,
       uncachedTrend: [
-        2_000_000, 1_900_000, 1_800_000, 1_700_000, 1_600_000, 1_500_000, 1_400_000,
-        1_300_000, 1_200_000, 1_100_000, 1_000_000,
+        2_000_000, 1_900_000, 1_800_000, 1_700_000, 1_600_000, 1_500_000, 1_400_000, 1_300_000,
+        1_200_000, 1_100_000, 1_000_000,
       ],
       byModel: metrics.modelMix.map((m) => ({ model: m.model, ratio: hitRatio })),
     },
@@ -344,15 +358,63 @@ export function toCommandCenterData(
       batchShare: 0,
     },
     products: [
-      { name: "Embeddings", metric: "0", unit: "", cost: "$0.00", sparkline: [0, 0, 0, 0, 0, 0, 0] },
+      {
+        name: "Embeddings",
+        metric: "0",
+        unit: "",
+        cost: "$0.00",
+        sparkline: [0, 0, 0, 0, 0, 0, 0],
+      },
       { name: "Images", metric: "0", unit: "", cost: "$0.00", sparkline: [0, 0, 0, 0, 0, 0, 0] },
-      { name: "Audio Transcription", metric: "0", unit: "s", cost: "$0.00", sparkline: [0, 0, 0, 0, 0, 0, 0] },
-      { name: "Audio Speech", metric: "0", unit: "chars", cost: "$0.00", sparkline: [0, 0, 0, 0, 0, 0, 0] },
-      { name: "Code Interpreter", metric: "0", unit: "", cost: "$0.00", sparkline: [0, 0, 0, 0, 0, 0, 0] },
-      { name: "Vector Stores", metric: "0", unit: "B", cost: "$0.00", sparkline: [0, 0, 0, 0, 0, 0, 0] },
-      { name: "Moderation", metric: "0", unit: "", cost: "$0.00", sparkline: [0, 0, 0, 0, 0, 0, 0] },
+      {
+        name: "Audio Transcription",
+        metric: "0",
+        unit: "s",
+        cost: "$0.00",
+        sparkline: [0, 0, 0, 0, 0, 0, 0],
+      },
+      {
+        name: "Audio Speech",
+        metric: "0",
+        unit: "chars",
+        cost: "$0.00",
+        sparkline: [0, 0, 0, 0, 0, 0, 0],
+      },
+      {
+        name: "Code Interpreter",
+        metric: "0",
+        unit: "",
+        cost: "$0.00",
+        sparkline: [0, 0, 0, 0, 0, 0, 0],
+      },
+      {
+        name: "Vector Stores",
+        metric: "0",
+        unit: "B",
+        cost: "$0.00",
+        sparkline: [0, 0, 0, 0, 0, 0, 0],
+      },
+      {
+        name: "Moderation",
+        metric: "0",
+        unit: "",
+        cost: "$0.00",
+        sparkline: [0, 0, 0, 0, 0, 0, 0],
+      },
     ],
   };
+}
+
+function generateTimestamps(count: number): string[] {
+  const now = Date.now();
+  const intervalMs = (24 * 60 * 60 * 1000) / (count - 1 || 1);
+  return Array.from({ length: count }, (_, i) => {
+    const time = now - (count - 1 - i) * intervalMs;
+    const date = new Date(time);
+    const hours = String(date.getHours()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, "0");
+    return `${hours}:${minutes}`;
+  });
 }
 
 function toBurnBars(metrics: CodexMetricsAggregation) {
@@ -370,7 +432,9 @@ function toBurnBars(metrics: CodexMetricsAggregation) {
 }
 
 function toLimitWindow(window: CodexMetricsAggregation["rateLimitWindows"][number]): LimitWindow {
-  const resetText = window.resetsAt ? `Resets ${formatTimestamp(window.resetsAt)}.` : "Reset unknown.";
+  const resetText = window.resetsAt
+    ? `Resets ${formatTimestamp(window.resetsAt)}.`
+    : "Reset unknown.";
   const limitName = window.limitName ?? "Codex";
   const windowLength = window.windowMinutes ? `${window.windowMinutes} minute window.` : "";
   return {

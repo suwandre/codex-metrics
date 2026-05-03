@@ -61,6 +61,7 @@ export type KpiMetric = {
   delta: string;
   deltaDirection: "up" | "down" | "neutral";
   sparkline: number[];
+  timestamps?: string[]; // formatted time labels for each sparkline point
 };
 
 export type SessionRow = {
@@ -180,7 +181,15 @@ export type CommandCenterData = {
   billing: {
     byDay: BillingCost[];
     breakdown: { label: string; value: number; cost: string }[];
-    completions: { model: string; project: string; user: string; key: string; tier: string; tokens: string; cost: string }[];
+    completions: {
+      model: string;
+      project: string;
+      user: string;
+      key: string;
+      tier: string;
+      tokens: string;
+      cost: string;
+    }[];
     totalRequests: number;
     batchShare: number;
   };

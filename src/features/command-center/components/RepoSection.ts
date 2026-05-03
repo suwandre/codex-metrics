@@ -14,17 +14,15 @@ export function renderRepoSection(data: CommandCenterData["repos"]): string {
           <div class="chart-title">Token Distribution by Repo</div>
           <div style="display:flex;gap:3px;height:60px;align-items:flex-end">
             ${data.distribution
-              .map(
-                (r, i) => {
-                  const colors = ["var(--accent)", "var(--info)", "var(--success)", "var(--warning)"];
-                  return `
+              .map((r, i) => {
+                const colors = ["var(--accent)", "var(--info)", "var(--success)", "var(--warning)"];
+                return `
                 <div style="flex:${r.tokens};background:${colors[i % colors.length]};border-radius:3px 3px 0 0;display:flex;align-items:center;justify-content:center;flex-direction:column;padding:4px;min-width:40px">
                   <span style="font-size:11px;font-weight:700">${escapeHtml(r.name)}</span>
                   <span style="font-size:10px;color:var(--text-secondary)">${formatCompactNumber(r.tokens)}</span>
                 </div>
               `;
-                },
-              )
+              })
               .join("")}
           </div>
         </div>
@@ -32,16 +30,14 @@ export function renderRepoSection(data: CommandCenterData["repos"]): string {
           <div class="chart-title">Failures by Repo (24h)</div>
           <div style="display:flex;gap:3px;height:32px;align-items:flex-end">
             ${data.failures
-              .map(
-                (f, i) => {
-                  const opacity = 1 - i * 0.2;
-                  return `
+              .map((f, i) => {
+                const opacity = 1 - i * 0.2;
+                return `
                 <div style="width:${f.width}%;background:rgba(255,107,107,${opacity});border-radius:3px 3px 0 0;display:flex;align-items:center;justify-content:center;font-size:11px;font-weight:600;padding:4px">
                   ${escapeHtml(f.name)} — ${f.count}
                 </div>
               `;
-                },
-              )
+              })
               .join("")}
           </div>
         </div>
@@ -50,10 +46,11 @@ export function renderRepoSection(data: CommandCenterData["repos"]): string {
           <table class="data-table">
             <thead><tr><th>Repo</th><th>Avg</th><th>p95</th><th>Count</th></tr></thead>
             <tbody>
-              ${data.latency.length > 0
-                ? data.latency
-                    .map(
-                      (r) => `
+              ${
+                data.latency.length > 0
+                  ? data.latency
+                      .map(
+                        (r) => `
                 <tr>
                   <td>${escapeHtml(r.name)}</td>
                   <td>${escapeHtml(r.avgLatency)}</td>
@@ -61,9 +58,10 @@ export function renderRepoSection(data: CommandCenterData["repos"]): string {
                   <td>${r.count}</td>
                 </tr>
               `,
-                    )
-                    .join("")
-                : `<tr><td colspan="4" style="text-align:center;color:var(--text-secondary)">No repo data</td></tr>`}
+                      )
+                      .join("")
+                  : `<tr><td colspan="4" style="text-align:center;color:var(--text-secondary)">No repo data</td></tr>`
+              }
             </tbody>
           </table>
         </div>

@@ -15,7 +15,7 @@ export function renderCacheSection(data: CommandCenterData["cache"]): string {
             <div class="chart-title">Hit Ratio</div>
             <svg width="140" height="90" viewBox="0 0 140 90">
               <path d="M 20 80 A 50 50 0 0 1 120 80" fill="none" stroke="var(--chart-grid)" stroke-width="10" stroke-linecap="round"/>
-              <path d="M 20 80 A 50 50 0 0 1 ${20 + 100 * data.hitRatio / 100} ${80 - 50 * Math.sin(Math.PI * data.hitRatio / 100)}" fill="none" stroke="var(--success)" stroke-width="10" stroke-linecap="round"/>
+              <path d="M 20 80 A 50 50 0 0 1 ${20 + (100 * data.hitRatio) / 100} ${80 - 50 * Math.sin((Math.PI * data.hitRatio) / 100)}" fill="none" stroke="var(--success)" stroke-width="10" stroke-linecap="round"/>
               <text x="70" y="72" text-anchor="middle" fill="var(--success)" font-size="22" font-weight="700">${data.hitRatio}%</text>
             </svg>
           </div>
