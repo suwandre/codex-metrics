@@ -12,13 +12,13 @@ import { renderSystemPulse } from "./SystemPulse";
 import { renderTokenBurnSection } from "./TokenBurnSection";
 import { renderToolReliabilitySection } from "./ToolReliabilitySection";
 
-export function renderCommandCenter(data: CommandCenterData): string {
+export function renderCommandCenter(data: CommandCenterData, window = "24h"): string {
   return `
     <div class="layout">
       ${renderSidebarNav()}
       <main class="main" id="main">
         ${renderStickyHeader(data.refreshStatus)}
-        ${renderSystemPulse(data.kpis)}
+        ${renderSystemPulse(data.kpis, window)}
         ${renderTokenBurnSection(data.tokenBurn)}
         ${renderRateLimitSection(data.rateLimits)}
         ${renderSessionStreamSection(data.sessionStream)}

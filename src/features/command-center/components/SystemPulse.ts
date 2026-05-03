@@ -16,7 +16,12 @@ const deltaArrow: Record<string, string> = {
   neutral: "&#8212;",
 };
 
-export function renderSystemPulse(kpis: KpiMetric[]): string {
+export function renderSystemPulse(kpis: KpiMetric[], window: string): string {
+  const buttons = ["1h", "24h", "7d", "30d", "all"].map(
+    (w) =>
+      `<button class="window-btn${w === window ? " active" : ""}" data-window="${w}">${w}</button>`,
+  );
+
   return `
     <section class="section" id="pulse">
       <div class="section-header" data-toggle="section">
@@ -25,6 +30,7 @@ export function renderSystemPulse(kpis: KpiMetric[]): string {
         <div class="section-collapse">&#9660;</div>
       </div>
       <div class="section-body">
+        <div class="window-toggle">${buttons.join("")}</div>
         <div class="kpi-grid">
           ${kpis.map((kpi) => renderKpiTile(kpi)).join("")}
         </div>

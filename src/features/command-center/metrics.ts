@@ -1,7 +1,14 @@
 import type { CodexMetricsAggregation } from "../codex-sessions";
+import {
+  type AggregatedWindow,
+  aggregateToWindow,
+  type HistoryStorage,
+  type TimeWindow,
+} from "../history";
 import type {
   BurnBarTone,
   CommandCenterData,
+  KpiMetric,
   LimitWindow,
   ModelUsageTone,
   SessionRow,
@@ -36,6 +43,8 @@ export function isGeneratedMetricsFile(value: unknown): value is GeneratedMetric
 
 type CommandCenterDataOptions = {
   refreshStatus?: string;
+  history?: HistoryStorage;
+  window?: TimeWindow;
 };
 
 export function toCommandCenterData(
@@ -59,7 +68,6 @@ export function toCommandCenterData(
   const estimatedSavings = tokensSaved * 0.0003;
 
   const successRate = metrics.successRate.rate;
-  const errorRate = 1 - successRate;
   const sessions = metrics.recentSessions;
 
   return {
@@ -128,86 +136,7 @@ export function toCommandCenterData(
       share: Math.round(usage.share * 100),
       tone: modelTones[index % modelTones.length] ?? "green",
     })),
-    kpis: [
-      {
-        label: "Success Rate",
-        value: formatPercent(successRate),
-        color: successRate >= 0.9 ? "success" : "warning",
-        delta: `+${formatPercent(Math.max(0, successRate - 0.89))}`,
-        deltaDirection: "up",
-        sparkline: [85, 87, 88, 89, 90, 91, 91],
-        timestamps: generateTimestamps(7),
-      },
-      {
-        label: "Latency p95",
-        value: formatDuration(metrics.latency.p95Ms),
-        unit: "s",
-        color: metrics.latency.p95Ms > 5000 ? "warning" : "accent",
-        delta: `-${formatDuration(Math.max(0, metrics.latency.p95Ms - 2900))}`,
-        deltaDirection: "down",
-        sparkline: metrics.latency.samples > 0 ? [8, 7, 6, 5, 3, 3, 3] : [0, 0, 0, 0, 0, 0, 0],
-        timestamps: generateTimestamps(7),
-      },
-      {
-        label: "Throughput",
-        value: formatCompactNumber(metrics.throughput.totalTokensPerMinute),
-        unit: "k",
-        color: "accent",
-        delta: "+5%",
-        deltaDirection: "up",
-        sparkline: [28, 30, 31, 32, 33, 33, 34],
-        timestamps: generateTimestamps(7),
-      },
-      {
-        label: "Active Sessions",
-        value: String(sessions.length),
-        color: "default",
-        delta: sessions.length === 0 ? "— none" : "stable",
-        deltaDirection: "neutral",
-        sparkline: sessions.length > 0 ? [2, 2, 3, 3, 3, 3, 3] : [0, 0, 0, 0, 0, 0, 0],
-        timestamps: generateTimestamps(7),
-      },
-      {
-        label: "Daily Burn / 95% limit",
-        value: formatCompactNumber(totalTokens),
-        color: "info",
-        delta: "",
-        deltaDirection: "neutral",
-        sparkline: [15, 28, 67, 180, 55, 210, 12],
-        timestamps: generateTimestamps(7),
-      },
-      {
-        label: "Rate Limit — weekly / 5h",
-        value: metrics.rateLimitWindows[0]
-          ? `${Math.round(metrics.rateLimitWindows[0].usedPercent)}%`
-          : "0%",
-        color: "success",
-        delta: metrics.rateLimitWindows[1]
-          ? ` / ${Math.round(metrics.rateLimitWindows[1].usedPercent)}%`
-          : "",
-        deltaDirection: "neutral",
-        sparkline: [2, 2, 4, 4, 4, 2, 2],
-        timestamps: generateTimestamps(7),
-      },
-      {
-        label: "Current RPM",
-        value: String(Math.round((metrics.throughput.totalTokensPerMinute / 1000) * 60)),
-        color: "accent",
-        delta: "",
-        deltaDirection: "neutral",
-        sparkline: [80, 90, 100, 110, 114, 112, 115],
-        timestamps: generateTimestamps(7),
-      },
-      {
-        label: "Error Rate (5m)",
-        value: `${formatCompactNumber(errorRate * 100)}%`,
-        color: errorRate > 0.05 ? "warning" : "default",
-        delta: "-0.5%",
-        deltaDirection: "down",
-        sparkline: [5, 4, 4, 3, 3, 2, 2],
-        timestamps: generateTimestamps(7),
-      },
-    ],
+    kpis: toKpis(metrics, options.history, options.window),
     tokenBurn: {
       composition: [
         { label: "input", value: inputTokens, color: "--accent" },
@@ -403,6 +332,309 @@ export function toCommandCenterData(
       },
     ],
   };
+}
+
+function toKpis(
+  metrics: CodexMetricsAggregation,
+  history: HistoryStorage | undefined,
+  window: TimeWindow | undefined,
+): KpiMetric[] {
+  const hasHistory = history && history.snapshots.length >= 2;
+  const aggregated = hasHistory ? aggregateToWindow(window ?? "24h", history) : null;
+
+  if (aggregated && aggregated.buckets.length >= 2) {
+    return buildHistoryKpis(metrics, aggregated);
+  }
+
+  return buildMockKpis(metrics);
+}
+
+function buildHistoryKpis(
+  metrics: CodexMetricsAggregation,
+  aggregated: AggregatedWindow,
+): KpiMetric[] {
+  const latest = aggregated.latest ?? metrics;
+  const previous = aggregated.previous;
+
+  const successRate = latest.successRate.rate;
+  const errorRate =
+    latest.successRate.total > 0 ? (latest.successRate.failed / latest.successRate.total) * 100 : 0;
+  const sessions = latest.recentSessions;
+
+  const sparkSuccess = toSparklineFromHistory(aggregated, "successRate");
+  const sparkLatency = toSparklineFromHistory(aggregated, "latency");
+  const sparkThroughput = toSparklineFromHistory(aggregated, "throughput");
+  const sparkSessions = toSparklineFromHistory(aggregated, "activeSessions");
+  const sparkBurn = toSparklineFromHistory(aggregated, "dailyBurn");
+  const sparkRate = toSparklineFromHistory(aggregated, "rateLimit");
+  const sparkRpm = toSparklineFromHistory(aggregated, "rpm");
+  const sparkError = toSparklineFromHistory(aggregated, "errorRate");
+
+  const timestamps = aggregated.buckets.map((b) => b.label);
+
+  return [
+    kpiFromHistory(
+      "Success Rate",
+      formatPercent(successRate),
+      "successRate",
+      sparkSuccess,
+      timestamps,
+      successRate >= 0.9 ? "success" : "warning",
+      "",
+      previous,
+      latest,
+    ),
+    kpiFromHistory(
+      "Latency p95",
+      formatDuration(latest.latency.p95Ms),
+      "latency",
+      sparkLatency,
+      timestamps,
+      latest.latency.p95Ms > 5000 ? "warning" : "accent",
+      "s",
+      previous,
+      latest,
+    ),
+    kpiFromHistory(
+      "Throughput",
+      formatCompactNumber(latest.throughput.totalTokensPerMinute),
+      "throughput",
+      sparkThroughput,
+      timestamps,
+      "accent",
+      "k",
+      previous,
+      latest,
+    ),
+    kpiFromHistory(
+      "Active Sessions",
+      String(sessions.length),
+      "activeSessions",
+      sparkSessions,
+      timestamps,
+      "default",
+      "",
+      previous,
+      latest,
+    ),
+    kpiFromHistory(
+      "Daily Burn / 95% limit",
+      formatCompactNumber(latest.totals.totalTokens.value),
+      "dailyBurn",
+      sparkBurn,
+      timestamps,
+      "info",
+      "",
+      previous,
+      latest,
+    ),
+    kpiFromHistory(
+      "Rate Limit — weekly / 5h",
+      latest.rateLimitWindows[0] ? `${Math.round(latest.rateLimitWindows[0].usedPercent)}%` : "0%",
+      "rateLimit",
+      sparkRate,
+      timestamps,
+      "success",
+      "",
+      previous,
+      latest,
+    ),
+    kpiFromHistory(
+      "Current RPM",
+      String(Math.round((latest.throughput.totalTokensPerMinute / 1000) * 60)),
+      "rpm",
+      sparkRpm,
+      timestamps,
+      "accent",
+      "",
+      previous,
+      latest,
+    ),
+    kpiFromHistory(
+      "Error Rate (5m)",
+      `${formatCompactNumber(errorRate)}%`,
+      "errorRate",
+      sparkError,
+      timestamps,
+      errorRate > 5 ? "warning" : "default",
+      "",
+      previous,
+      latest,
+    ),
+  ];
+}
+
+function kpiFromHistory(
+  label: string,
+  value: string,
+  metricKey: string,
+  sparkline: number[],
+  timestamps: string[],
+  color: KpiMetric["color"],
+  unit: string,
+  previous: CodexMetricsAggregation | null,
+  latest: CodexMetricsAggregation,
+): KpiMetric {
+  const currentVal = extractMetricValue(latest, metricKey);
+  const prevVal = previous ? extractMetricValue(previous, metricKey) : currentVal;
+  const delta = currentVal - prevVal;
+
+  let deltaStr: string;
+  let direction: "up" | "down" | "neutral";
+
+  if (Math.abs(delta) < 0.001) {
+    deltaStr = "—";
+    direction = "neutral";
+  } else {
+    const sign = delta >= 0 ? "+" : "-";
+    direction = delta >= 0 ? "up" : "down";
+    if (metricKey === "successRate" || metricKey === "errorRate" || metricKey === "rateLimit") {
+      deltaStr = `${sign}${Math.abs(delta).toFixed(1)}%`;
+    } else if (metricKey === "latency") {
+      deltaStr = `${sign}${formatDuration(Math.abs(delta))}`;
+    } else if (metricKey === "activeSessions") {
+      deltaStr = `${sign}${Math.abs(Math.round(delta))}`;
+    } else {
+      deltaStr = `${sign}${formatCompactNumber(Math.abs(delta))}`;
+    }
+  }
+
+  // invert direction for metrics where lower is better
+  if (
+    (metricKey === "latency" || metricKey === "errorRate" || metricKey === "rateLimit") &&
+    direction !== "neutral"
+  ) {
+    direction = direction === "up" ? "down" : "up";
+  }
+
+  return {
+    label,
+    value,
+    unit,
+    color,
+    delta: deltaStr,
+    deltaDirection: direction,
+    sparkline,
+    timestamps,
+  };
+}
+
+function extractMetricValue(metrics: CodexMetricsAggregation, metric: string): number {
+  switch (metric) {
+    case "successRate":
+      return metrics.successRate.rate * 100;
+    case "latency":
+      return metrics.latency.p95Ms;
+    case "throughput":
+      return metrics.throughput.totalTokensPerMinute;
+    case "activeSessions":
+      return metrics.recentSessions.length;
+    case "dailyBurn":
+      return metrics.totals.totalTokens.value;
+    case "rateLimit":
+      return metrics.rateLimitWindows[0]?.usedPercent ?? 0;
+    case "rpm":
+      return (metrics.throughput.totalTokensPerMinute / 1000) * 60;
+    case "errorRate": {
+      const total = metrics.successRate.total;
+      return total > 0 ? (metrics.successRate.failed / total) * 100 : 0;
+    }
+    default:
+      return 0;
+  }
+}
+
+export function toSparklineFromHistory(window: AggregatedWindow, metric: string): number[] {
+  const values = window.buckets.map((b) => extractMetricValue(b.metrics, metric));
+  if (values.length >= 2) return values;
+  return values.length === 1 ? [values[0], values[0]] : [0, 0];
+}
+
+function buildMockKpis(metrics: CodexMetricsAggregation): KpiMetric[] {
+  const successRate = metrics.successRate.rate;
+  const errorRate = 1 - successRate;
+  const sessions = metrics.recentSessions;
+
+  return [
+    {
+      label: "Success Rate",
+      value: formatPercent(successRate),
+      color: successRate >= 0.9 ? "success" : "warning",
+      delta: `+${formatPercent(Math.max(0, successRate - 0.89))}`,
+      deltaDirection: "up",
+      sparkline: [85, 87, 88, 89, 90, 91, 91],
+      timestamps: generateTimestamps(7),
+    },
+    {
+      label: "Latency p95",
+      value: formatDuration(metrics.latency.p95Ms),
+      unit: "s",
+      color: metrics.latency.p95Ms > 5000 ? "warning" : "accent",
+      delta: `-${formatDuration(Math.max(0, metrics.latency.p95Ms - 2900))}`,
+      deltaDirection: "down",
+      sparkline: metrics.latency.samples > 0 ? [8, 7, 6, 5, 3, 3, 3] : [0, 0, 0, 0, 0, 0, 0],
+      timestamps: generateTimestamps(7),
+    },
+    {
+      label: "Throughput",
+      value: formatCompactNumber(metrics.throughput.totalTokensPerMinute),
+      unit: "k",
+      color: "accent",
+      delta: "+5%",
+      deltaDirection: "up",
+      sparkline: [28, 30, 31, 32, 33, 33, 34],
+      timestamps: generateTimestamps(7),
+    },
+    {
+      label: "Active Sessions",
+      value: String(sessions.length),
+      color: "default",
+      delta: sessions.length === 0 ? "— none" : "stable",
+      deltaDirection: "neutral",
+      sparkline: sessions.length > 0 ? [2, 2, 3, 3, 3, 3, 3] : [0, 0, 0, 0, 0, 0, 0],
+      timestamps: generateTimestamps(7),
+    },
+    {
+      label: "Daily Burn / 95% limit",
+      value: formatCompactNumber(metrics.totals.totalTokens.value),
+      color: "info",
+      delta: "",
+      deltaDirection: "neutral",
+      sparkline: [15, 28, 67, 180, 55, 210, 12],
+      timestamps: generateTimestamps(7),
+    },
+    {
+      label: "Rate Limit — weekly / 5h",
+      value: metrics.rateLimitWindows[0]
+        ? `${Math.round(metrics.rateLimitWindows[0].usedPercent)}%`
+        : "0%",
+      color: "success",
+      delta: metrics.rateLimitWindows[1]
+        ? ` / ${Math.round(metrics.rateLimitWindows[1].usedPercent)}%`
+        : "",
+      deltaDirection: "neutral",
+      sparkline: [2, 2, 4, 4, 4, 2, 2],
+      timestamps: generateTimestamps(7),
+    },
+    {
+      label: "Current RPM",
+      value: String(Math.round((metrics.throughput.totalTokensPerMinute / 1000) * 60)),
+      color: "accent",
+      delta: "",
+      deltaDirection: "neutral",
+      sparkline: [80, 90, 100, 110, 114, 112, 115],
+      timestamps: generateTimestamps(7),
+    },
+    {
+      label: "Error Rate (5m)",
+      value: `${formatCompactNumber(errorRate * 100)}%`,
+      color: errorRate > 0.05 ? "warning" : "default",
+      delta: "-0.5%",
+      deltaDirection: "down",
+      sparkline: [5, 4, 4, 3, 3, 2, 2],
+      timestamps: generateTimestamps(7),
+    },
+  ];
 }
 
 function generateTimestamps(count: number): string[] {

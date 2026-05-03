@@ -2,6 +2,8 @@ import "./styles.css";
 import { renderCommandCenter } from "./features/command-center/components/CommandCenter";
 import { renderDashboardState } from "./features/command-center/components/DashboardState";
 import { isGeneratedMetricsFile, toCommandCenterData } from "./features/command-center/metrics";
+import { loadHistory, saveSnapshot } from "./features/history/storage";
+import type { TimeWindow } from "./features/history/types";
 
 const pollIntervalMs = 3000;
 const app = document.querySelector<HTMLDivElement>("#app");
@@ -13,6 +15,7 @@ if (!app) {
 const appRoot = app;
 let currentGeneratedAt: string | null = null;
 let hasRenderedDashboard = false;
+let currentWindow: TimeWindow = "24h";
 
 appRoot.innerHTML = renderDashboardState({
   title: "Loading metrics",
@@ -35,10 +38,17 @@ async function refreshDashboard({ forceRender }: { forceRender: boolean }) {
 
     currentGeneratedAt = metrics.generatedAt;
     hasRenderedDashboard = true;
+
+    const history = loadHistory();
+    saveSnapshot({ generatedAt: metrics.generatedAt, metrics: metrics.metrics });
+
     appRoot.innerHTML = renderCommandCenter(
       toCommandCenterData(metrics, {
         refreshStatus: `Updated ${formatTime(metrics.generatedAt)}. Polling every ${pollIntervalMs / 1000}s.`,
+        history,
+        window: currentWindow,
       }),
+      currentWindow,
     );
     setupInteractions();
   } catch (error: unknown) {
@@ -106,6 +116,16 @@ function setupInteractions() {
         t.classList.remove("active");
       });
       tab.classList.add("active");
+    });
+  });
+
+  // Window toggle
+  document.querySelectorAll(".window-btn").forEach((btn) => {
+    btn.addEventListener("click", () => {
+      const w = btn.getAttribute("data-window");
+      if (!w) return;
+      currentWindow = w as TimeWindow;
+      void refreshDashboard({ forceRender: true });
     });
   });
 
