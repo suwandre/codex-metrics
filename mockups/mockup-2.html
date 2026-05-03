@@ -1,0 +1,549 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Codex Metrics — Mockup 2</title>
+<style>
+  *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+  :root {
+    --violet: #6366F1;
+    --violet-light: #818CF8;
+    --violet-dark: #4F46E5;
+    --coral: #F43F5E;
+    --coral-light: #FB7185;
+    --bg-start: #E0E7FF;
+    --bg-mid: #F0E6FF;
+    --bg-end: #FCE7F3;
+    --glass-bg: rgba(255, 255, 255, 0.55);
+    --glass-border: rgba(255, 255, 255, 0.6);
+    --glass-shadow: 0 8px 32px rgba(99, 102, 241, 0.08);
+    --text-primary: #1E1B4B;
+    --text-secondary: #4B5563;
+    --text-muted: #9CA3AF;
+    --radius-lg: 20px;
+    --radius-md: 16px;
+    --radius-sm: 12px;
+  }
+
+  @font-face {
+    font-family: 'Inter';
+    src: local('Inter'), url('https://fonts.gstatic.com/s/inter/v18/UcCO3FwrK3iLTeHuS_nVMrMxCp50SjIw2boKpomK0t1aAFFoA.woff2') format('woff2');
+    font-display: swap;
+  }
+
+  body {
+    font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+    min-height: 100vh;
+    background: linear-gradient(135deg, var(--bg-start) 0%, var(--bg-mid) 50%, var(--bg-end) 100%);
+    color: var(--text-primary);
+    line-height: 1.5;
+    overflow-x: hidden;
+  }
+
+  /* ——— Layout ——— */
+  .app { display: flex; min-height: 100vh; }
+
+  /* Sidebar */
+  .sidebar {
+    width: 220px;
+    padding: 32px 20px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border-right: 1px solid var(--glass-border);
+    display: flex;
+    flex-direction: column;
+    gap: 40px;
+  }
+  .sidebar-logo {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    font-weight: 700;
+    font-size: 16px;
+    color: var(--violet);
+  }
+  .sidebar-logo svg { width: 28px; height: 28px; }
+
+  .sidebar-nav { display: flex; flex-direction: column; gap: 4px; }
+  .sidebar-nav a {
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    padding: 10px 14px;
+    border-radius: var(--radius-sm);
+    text-decoration: none;
+    color: var(--text-secondary);
+    font-size: 14px;
+    font-weight: 500;
+    transition: all 0.2s;
+  }
+  .sidebar-nav a:hover { background: rgba(99,102,241,0.08); color: var(--violet); }
+  .sidebar-nav a.active {
+    background: linear-gradient(135deg, rgba(99,102,241,0.12), rgba(244,63,94,0.08));
+    color: var(--violet);
+    font-weight: 600;
+  }
+  .sidebar-nav a .nav-num {
+    font-size: 11px;
+    color: var(--text-muted);
+    font-weight: 400;
+    width: 18px;
+  }
+  .sidebar-nav a.active .nav-num { color: var(--violet-light); }
+
+  /* Main */
+  .main { flex: 1; padding: 32px 40px; display: flex; flex-direction: column; gap: 28px; overflow-y: auto; }
+
+  /* Top bar */
+  .topbar { display: flex; justify-content: space-between; align-items: flex-start; flex-wrap: wrap; gap: 16px; }
+  .topbar-left h1 { font-size: 26px; font-weight: 700; color: var(--text-primary); }
+  .topbar-left p { font-size: 13px; color: var(--text-muted); margin-top: 2px; }
+  .topbar-left .live-check { font-size: 12px; color: #22C55E; margin-top: 4px; display: flex; align-items: center; gap: 6px; }
+  .topbar-left .live-check::before {
+    content: '';
+    width: 6px; height: 6px;
+    background: #22C55E;
+    border-radius: 50%;
+    display: inline-block;
+  }
+
+  .topbar-right { display: flex; align-items: center; gap: 16px; flex-wrap: wrap; }
+  .badge {
+    display: flex; align-items: center; gap: 6px;
+    background: var(--glass-bg);
+    backdrop-filter: blur(16px);
+    -webkit-backdrop-filter: blur(16px);
+    border: 1px solid var(--glass-border);
+    border-radius: 100px;
+    padding: 6px 14px;
+    font-size: 12px; font-weight: 500;
+    color: var(--text-secondary);
+    box-shadow: var(--glass-shadow);
+  }
+  .badge .dot { width: 6px; height: 6px; border-radius: 50%; }
+  .badge .dot.green { background: #22C55E; }
+  .badge .dot.violet { background: var(--violet); }
+
+  /* ——— Glass card ——— */
+  .card {
+    background: var(--glass-bg);
+    backdrop-filter: blur(24px);
+    -webkit-backdrop-filter: blur(24px);
+    border: 1px solid var(--glass-border);
+    border-radius: var(--radius-lg);
+    padding: 24px;
+    box-shadow: var(--glass-shadow);
+  }
+
+  /* ——— KPI row ——— */
+  .kpi-row { display: grid; grid-template-columns: repeat(6, 1fr); gap: 16px; }
+  .kpi-card {
+    display: flex;
+    align-items: center;
+    gap: 14px;
+    padding: 20px;
+    border-radius: 100px;
+  }
+  .kpi-icon {
+    width: 44px; height: 44px;
+    border-radius: 50%;
+    display: flex; align-items: center; justify-content: center;
+    flex-shrink: 0;
+  }
+  .kpi-icon svg { width: 20px; height: 20px; }
+  .kpi-icon.violet { background: linear-gradient(135deg, var(--violet), var(--violet-light)); color: #fff; }
+  .kpi-icon.coral { background: linear-gradient(135deg, var(--coral), var(--coral-light)); color: #fff; }
+  .kpi-body { flex: 1; min-width: 0; }
+  .kpi-label { font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em; color: var(--text-muted); }
+  .kpi-value { font-size: 20px; font-weight: 700; color: var(--text-primary); margin-top: 2px; }
+  .kpi-tag {
+    font-size: 9px;
+    font-weight: 700;
+    text-transform: uppercase;
+    letter-spacing: 0.06em;
+    padding: 3px 8px;
+    border-radius: 100px;
+    white-space: nowrap;
+  }
+  .kpi-tag.real { background: rgba(99,102,241,0.1); color: var(--violet); }
+  .kpi-tag.derived { background: rgba(244,63,94,0.1); color: var(--coral); }
+  .kpi-sparkline { flex-shrink: 0; width: 64px; height: 32px; }
+  .kpi-content { flex: 1; min-width: 0; }
+
+  /* ——— Grid ——— */
+  .grid-2 { display: grid; grid-template-columns: 2fr 1fr; gap: 20px; }
+  .grid-2b { display: grid; grid-template-columns: 3fr 1fr; gap: 20px; }
+
+  .card-title { font-size: 14px; font-weight: 600; color: var(--text-secondary); margin-bottom: 20px; display: flex; align-items: center; gap: 8px; }
+  .card-title .title-dot { width: 8px; height: 8px; border-radius: 50%; }
+  .card-title .title-dot.violet { background: var(--violet); }
+  .card-title .title-dot.coral { background: var(--coral); }
+
+  /* ——— Bar chart ——— */
+  .bar-chart { display: flex; flex-direction: column; gap: 14px; }
+  .bar-row { display: flex; align-items: center; gap: 12px; }
+  .bar-day { font-size: 12px; font-weight: 500; color: var(--text-muted); width: 28px; text-align: right; }
+  .bar-track { flex: 1; height: 28px; background: rgba(99,102,241,0.06); border-radius: 100px; overflow: hidden; position: relative; }
+  .bar-fill {
+    height: 100%;
+    border-radius: 100px;
+    background: linear-gradient(90deg, var(--violet), var(--violet-light));
+    transition: width 0.6s ease;
+  }
+  .bar-fill .bar-cached {
+    position: absolute;
+    top: 0; left: 0; height: 100%;
+    background: linear-gradient(90deg, rgba(129,140,248,0.4), rgba(129,140,248,0.15));
+    border-radius: 100px 0 0 100px;
+  }
+  .bar-fill .bar-output {
+    position: absolute; top: 0; right: 0; height: 100%;
+    background: linear-gradient(90deg, rgba(244,63,94,0.25), rgba(244,63,94,0.55));
+    border-radius: 0 100px 100px 0;
+  }
+  .bar-value { font-size: 12px; font-weight: 600; color: var(--text-secondary); min-width: 40px; }
+
+  .chart-legend { display: flex; gap: 16px; margin-top: 4px; }
+  .legend-item { display: flex; align-items: center; gap: 6px; font-size: 11px; color: var(--text-muted); }
+  .legend-dot { width: 8px; height: 8px; border-radius: 50%; }
+
+  /* ——— Donut chart ——— */
+  .donut-container { display: flex; flex-direction: column; align-items: center; gap: 24px; padding: 8px 0; }
+  .donut { position: relative; }
+  .donut-center {
+    position: absolute;
+    top: 50%; left: 50%;
+    transform: translate(-50%, -50%);
+    text-align: center;
+  }
+  .donut-pct { font-size: 18px; font-weight: 700; color: var(--text-primary); }
+  .donut-label { font-size: 10px; color: var(--text-muted); font-weight: 500; }
+  .donut-meta { text-align: center; }
+  .donut-meta .meta-title { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .donut-meta .meta-sub { font-size: 11px; color: var(--text-muted); }
+
+  /* ——— Table ——— */
+  .table-wrap { overflow: hidden; border-radius: var(--radius-md); }
+  table { width: 100%; border-collapse: separate; border-spacing: 0 6px; }
+  th {
+    font-size: 11px; font-weight: 600; text-transform: uppercase; letter-spacing: 0.05em;
+    color: var(--text-muted); text-align: left; padding: 8px 16px;
+  }
+  td {
+    padding: 12px 16px;
+    font-size: 13px;
+    color: var(--text-secondary);
+    background: rgba(255,255,255,0.35);
+  }
+  tr td:first-child { border-radius: 10px 0 0 10px; }
+  tr td:last-child { border-radius: 0 10px 10px 0; }
+  th:first-child { padding-left: 16px; }
+  th:last-child { padding-right: 16px; }
+  .session-id { font-family: 'SF Mono', 'Fira Code', monospace; font-size: 12px; color: var(--violet); }
+  .status-dot {
+    display: inline-block; width: 8px; height: 8px; border-radius: 50%; margin-right: 6px; vertical-align: middle;
+  }
+  .status-dot.retry { background: #FBBF24; }
+  .status-dot.unknown { background: var(--violet); }
+  .status-dot.success { background: #22C55E; }
+
+  /* ——— Model usage bar ——— */
+  .model-bar-section { display: flex; flex-direction: column; gap: 16px; }
+  .model-bar-track {
+    height: 36px;
+    background: rgba(99,102,241,0.06);
+    border-radius: 100px;
+    overflow: hidden;
+  }
+  .model-bar-fill {
+    height: 100%;
+    background: linear-gradient(90deg, var(--violet), var(--violet-light));
+    border-radius: 100px;
+    display: flex; align-items: center; justify-content: center;
+    font-size: 12px; font-weight: 600; color: #fff;
+  }
+  .model-label { display: flex; justify-content: space-between; align-items: center; }
+  .model-name { font-size: 13px; font-weight: 600; color: var(--text-primary); }
+  .model-pct { font-size: 13px; font-weight: 700; color: var(--violet); }
+
+  /* scrollbar */
+  ::-webkit-scrollbar { width: 6px; }
+  ::-webkit-scrollbar-track { background: transparent; }
+  ::-webkit-scrollbar-thumb { background: rgba(99,102,241,0.2); border-radius: 3px; }
+</style>
+</head>
+<body>
+
+<div class="app">
+  <!-- Sidebar -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <svg viewBox="0 0 28 28" fill="none"><rect x="2" y="2" width="24" height="24" rx="6" fill="url(#lg)"/><path d="M10 9h8v2h-8zm0 4h6v2h-6z" fill="#fff"/><defs><linearGradient id="lg" x1="2" y1="2" x2="26" y2="26"><stop stop-color="#6366F1"/><stop offset="1" stop-color="#F43F5E"/></linearGradient></defs></svg>
+      Codex Metrics
+    </div>
+    <nav class="sidebar-nav">
+      <a href="#" class="active"><span class="nav-num">01</span> Overview</a>
+      <a href="#"><span class="nav-num">02</span> Tokens</a>
+      <a href="#"><span class="nav-num">03</span> Limits</a>
+      <a href="#"><span class="nav-num">04</span> Models</a>
+      <a href="#"><span class="nav-num">05</span> Sessions</a>
+    </nav>
+  </aside>
+
+  <!-- Main -->
+  <main class="main">
+    <!-- Top bar -->
+    <div class="topbar">
+      <div class="topbar-left">
+        <h1>Codex usage command center</h1>
+        <p>Generated 2026-05-03 08:07 from local Codex JSONL.</p>
+        <div class="live-check">Checked 10:07:32 AM. No new metrics.</div>
+      </div>
+      <div class="topbar-right">
+        <div class="badge"><span class="dot green"></span> Live refresh</div>
+        <div class="badge"><span class="dot violet"></span> 3s polling</div>
+        <div class="badge">70 files</div>
+        <div class="badge">15821 records</div>
+      </div>
+    </div>
+
+    <!-- KPI Row -->
+    <div class="kpi-row">
+      <!-- 1. Total Tokens -->
+      <div class="kpi-card card">
+        <div class="kpi-icon violet">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 11H9v-2h2v2zm0-4H9V5h2v4z"/></svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Total Tokens</div>
+          <div class="kpi-value">313.3M</div>
+        </div>
+        <span class="kpi-tag real">Real</span>
+        <svg class="kpi-sparkline" viewBox="0 0 64 32"><polyline points="0,28 8,24 16,20 24,22 32,16 40,18 48,10 56,8 64,4" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- 2. Cached Input -->
+      <div class="kpi-card card">
+        <div class="kpi-icon violet">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M9 2a1 1 0 000 2l2 2-4 4-2-2a1 1 0 00-2 0L3 8a1 1 0 000 2l7 7a1 1 0 002 0l2-2a1 1 0 000-2l-2-2 4-4 2 2a1 1 0 002 0l2-2a1 1 0 000-2L12 2a1 1 0 00-1 0l-2 2z"/></svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Cached Input</div>
+          <div class="kpi-value">296.6M</div>
+        </div>
+        <span class="kpi-tag real">Real</span>
+        <svg class="kpi-sparkline" viewBox="0 0 64 32"><polyline points="0,26 8,22 16,18 24,20 32,14 40,16 48,8 56,6 64,2" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- 3. Output Tokens -->
+      <div class="kpi-card card">
+        <div class="kpi-icon coral">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a1 1 0 011 1v6h6a1 1 0 110 2h-6v6a1 1 0 11-2 0v-6H3a1 1 0 110-2h6V3a1 1 0 011-1z"/></svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Output Tokens</div>
+          <div class="kpi-value">1.1M</div>
+        </div>
+        <span class="kpi-tag real">Real</span>
+        <svg class="kpi-sparkline" viewBox="0 0 64 32"><polyline points="0,20 8,22 16,24 24,20 32,22 40,18 48,20 56,16 64,18" fill="none" stroke="#F43F5E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- 4. Avg Latency -->
+      <div class="kpi-card card">
+        <div class="kpi-icon coral">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M10 2a8 8 0 100 16 8 8 0 000-16zm1 7.414V7a1 1 0 10-2 0v3a1 1 0 00.293.707l2 2a1 1 0 001.414-1.414L11 9.414z"/></svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Avg Latency</div>
+          <div class="kpi-value">10.9s</div>
+        </div>
+        <span class="kpi-tag derived">Derived</span>
+        <svg class="kpi-sparkline" viewBox="0 0 64 32"><polyline points="0,10 8,14 16,18 24,12 32,20 40,16 48,22 56,18 64,24" fill="none" stroke="#F43F5E" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- 5. Success Rate -->
+      <div class="kpi-card card">
+        <div class="kpi-icon violet">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M16.707 5.293a1 1 0 010 1.414l-8 8a1 1 0 01-1.414 0l-4-4a1 1 0 011.414-1.414L8 12.586l7.293-7.293a1 1 0 011.414 0z"/></svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Success Rate</div>
+          <div class="kpi-value">91%</div>
+        </div>
+        <span class="kpi-tag derived">Derived</span>
+        <svg class="kpi-sparkline" viewBox="0 0 64 32"><polyline points="0,28 8,24 16,26 24,20 32,22 40,18 48,14 56,12 64,8" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+
+      <!-- 6. Throughput -->
+      <div class="kpi-card card">
+        <div class="kpi-icon violet">
+          <svg viewBox="0 0 20 20" fill="currentColor"><path d="M13 7H7l3-4 3 4zm-3 10l3-4H7l3 4zM3 10l4 3V7l-4 3zm14 0l-4-3v6l4-3z"/></svg>
+        </div>
+        <div class="kpi-content">
+          <div class="kpi-label">Throughput</div>
+          <div class="kpi-value">33.5k/min</div>
+        </div>
+        <span class="kpi-tag derived">Derived</span>
+        <svg class="kpi-sparkline" viewBox="0 0 64 32"><polyline points="0,16 8,14 16,18 24,12 32,10 40,14 48,8 56,6 64,4" fill="none" stroke="#6366F1" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg>
+      </div>
+    </div>
+
+    <!-- Daily token burn + Limit windows -->
+    <div class="grid-2">
+      <!-- Daily token burn -->
+      <div class="card">
+        <div class="card-title">
+          <span class="title-dot violet"></span> Daily token burn
+        </div>
+        <div class="bar-chart">
+          <div class="bar-row"><span class="bar-day">Mon</span><div class="bar-track"><div class="bar-fill" style="width:72%"><div class="bar-cached" style="width:61%"></div><div class="bar-output" style="width:3%"></div></div></div><span class="bar-value">48.2M</span></div>
+          <div class="bar-row"><span class="bar-day">Tue</span><div class="bar-track"><div class="bar-fill" style="width:85%"><div class="bar-cached" style="width:62%"></div><div class="bar-output" style="width:4%"></div></div></div><span class="bar-value">56.8M</span></div>
+          <div class="bar-row"><span class="bar-day">Wed</span><div class="bar-track"><div class="bar-fill" style="width:94%"><div class="bar-cached" style="width:60%"></div><div class="bar-output" style="width:3%"></div></div></div><span class="bar-value">62.1M</span></div>
+          <div class="bar-row"><span class="bar-day">Thu</span><div class="bar-track"><div class="bar-fill" style="width:68%"><div class="bar-cached" style="width:57%"></div><div class="bar-output" style="width:4%"></div></div></div><span class="bar-value">45.0M</span></div>
+          <div class="bar-row"><span class="bar-day">Fri</span><div class="bar-track"><div class="bar-fill" style="width:52%"><div class="bar-cached" style="width:54%"></div><div class="bar-output" style="width:5%"></div></div></div><span class="bar-value">34.4M</span></div>
+          <div class="bar-row"><span class="bar-day">Sat</span><div class="bar-track"><div class="bar-fill" style="width:35%"><div class="bar-cached" style="width:48%"></div><div class="bar-output" style="width:6%"></div></div></div><span class="bar-value">23.8M</span></div>
+          <div class="bar-row"><span class="bar-day">Sun</span><div class="bar-track"><div class="bar-fill" style="width:28%"><div class="bar-cached" style="width:45%"></div><div class="bar-output" style="width:5%"></div></div></div><span class="bar-value">19.0M</span></div>
+        </div>
+        <div class="chart-legend" style="margin-top:16px">
+          <div class="legend-item"><div class="legend-dot" style="background:var(--violet)"></div> Input</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(129,140,248,0.4)"></div> Cached</div>
+          <div class="legend-item"><div class="legend-dot" style="background:rgba(244,63,94,0.5)"></div> Output</div>
+        </div>
+      </div>
+
+      <!-- Limit windows -->
+      <div class="card">
+        <div class="card-title">
+          <span class="title-dot coral"></span> Limit windows
+        </div>
+        <div class="donut-container">
+          <!-- 5h window — 0% -->
+          <div style="text-align:center">
+            <div class="donut">
+              <svg width="140" height="140" viewBox="0 0 140 140">
+                <circle cx="70" cy="70" r="54" fill="none" stroke="rgba(99,102,241,0.08)" stroke-width="14"/>
+                <circle cx="70" cy="70" r="54" fill="none" stroke="var(--violet)" stroke-width="14"
+                  stroke-dasharray="0 339.292" stroke-dashoffset="0"
+                  stroke-linecap="round" transform="rotate(-90 70 70)"/>
+                <circle cx="70" cy="70" r="54" fill="none" stroke="var(--coral)" stroke-width="14"
+                  stroke-dasharray="0.001 339.292" stroke-dashoffset="0"
+                  stroke-linecap="round" transform="rotate(-90 70 70)" opacity="0.3"/>
+              </svg>
+              <div class="donut-center">
+                <div class="donut-pct">0%</div>
+                <div class="donut-label">used</div>
+              </div>
+            </div>
+            <div class="donut-meta" style="margin-top:8px">
+              <div class="meta-title">5h window</div>
+              <div class="meta-sub">Primary limit</div>
+            </div>
+          </div>
+          <!-- 1w window — 8% -->
+          <div style="text-align:center">
+            <div class="donut">
+              <svg width="140" height="140" viewBox="0 0 140 140">
+                <circle cx="70" cy="70" r="54" fill="none" stroke="rgba(99,102,241,0.08)" stroke-width="14"/>
+                <circle cx="70" cy="70" r="54" fill="none" stroke="var(--violet)" stroke-width="14"
+                  stroke-dasharray="27.14 339.292" stroke-dashoffset="0"
+                  stroke-linecap="round" transform="rotate(-90 70 70)"/>
+              </svg>
+              <div class="donut-center">
+                <div class="donut-pct">8%</div>
+                <div class="donut-label">used</div>
+              </div>
+            </div>
+            <div class="donut-meta" style="margin-top:8px">
+              <div class="meta-title">1w window</div>
+              <div class="meta-sub">Secondary limit</div>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- Recent sessions + Model usage -->
+    <div class="grid-2">
+      <!-- Recent sessions -->
+      <div class="card">
+        <div class="card-title">
+          <span class="title-dot violet"></span> Recent sessions
+        </div>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>Session</th>
+                <th>Model</th>
+                <th>Tokens</th>
+                <th>Cost</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td><span class="session-id">abc123def</span></td>
+                <td>openai model</td>
+                <td>24.5M</td>
+                <td>$12.80</td>
+                <td><span class="status-dot success"></span>success</td>
+              </tr>
+              <tr>
+                <td><span class="session-id">ghi456jkl</span></td>
+                <td>openai model</td>
+                <td>18.2M</td>
+                <td>$9.40</td>
+                <td><span class="status-dot retry"></span>retry</td>
+              </tr>
+              <tr>
+                <td><span class="session-id">mno789pqr</span></td>
+                <td>openai model</td>
+                <td>31.0M</td>
+                <td>$16.20</td>
+                <td><span class="status-dot success"></span>success</td>
+              </tr>
+              <tr>
+                <td><span class="session-id">stu012vwx</span></td>
+                <td>openai model</td>
+                <td>12.8M</td>
+                <td>$6.50</td>
+                <td><span class="status-dot unknown"></span>unknown</td>
+              </tr>
+              <tr>
+                <td><span class="session-id">yza345bcd</span></td>
+                <td>openai model</td>
+                <td>22.1M</td>
+                <td>$11.70</td>
+                <td><span class="status-dot success"></span>success</td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+
+      <!-- Model usage -->
+      <div class="card">
+        <div class="card-title">
+          <span class="title-dot coral"></span> Model usage
+        </div>
+        <div class="model-bar-section">
+          <div class="model-label">
+            <span class="model-name">openai model</span>
+            <span class="model-pct">100%</span>
+          </div>
+          <div class="model-bar-track">
+            <div class="model-bar-fill" style="width:100%">
+              openai model
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+</div>
+
+</body>
+</html>

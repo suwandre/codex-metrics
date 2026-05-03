@@ -1,0 +1,817 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Codex Metrics - Command Center (Dark)</title>
+  <style>
+    :root {
+      --bg: #0F172A;
+      --surface: #1E293B;
+      --surface-raised: #273549;
+      --ink: #E2E8F0;
+      --muted: #64748B;
+      --border: #334155;
+      --cyan: #00E5FF;
+      --pink: #FF2E63;
+      --lime: #39FF14;
+      --cyan-dim: rgba(0, 229, 255, 0.15);
+      --pink-dim: rgba(255, 46, 99, 0.15);
+      --lime-dim: rgba(57, 255, 20, 0.15);
+      --glow-cyan: 0 0 20px rgba(0, 229, 255, 0.3), 0 0 60px rgba(0, 229, 255, 0.1);
+      --glow-pink: 0 0 20px rgba(255, 46, 99, 0.3), 0 0 60px rgba(255, 46, 99, 0.1);
+      --glow-lime: 0 0 20px rgba(57, 255, 20, 0.3), 0 0 60px rgba(57, 255, 20, 0.1);
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      min-height: 100vh;
+      background: var(--bg);
+      color: var(--ink);
+      font-family: 'Inter', -apple-system, BlinkMacSystemFont, 'Segoe UI', sans-serif;
+      font-size: 14px;
+      letter-spacing: 0;
+      position: relative;
+    }
+
+    /* Grid pattern background */
+    body::before {
+      content: '';
+      position: fixed;
+      inset: 0;
+      background-image:
+        linear-gradient(rgba(0, 229, 255, 0.03) 1px, transparent 1px),
+        linear-gradient(90deg, rgba(0, 229, 255, 0.03) 1px, transparent 1px);
+      background-size: 40px 40px;
+      pointer-events: none;
+      z-index: 0;
+    }
+
+    .shell {
+      display: grid;
+      grid-template-columns: 240px minmax(0, 1fr);
+      min-height: 100vh;
+      position: relative;
+      z-index: 1;
+    }
+
+    /* ── Sidebar ── */
+    aside {
+      padding: 28px 20px;
+      border-right: 1px solid var(--border);
+      background: var(--surface);
+      display: flex;
+      flex-direction: column;
+    }
+
+    .brand {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 36px;
+      font-weight: 700;
+      font-size: 17px;
+      color: var(--ink);
+    }
+
+    .mark {
+      display: grid;
+      place-items: center;
+      width: 36px;
+      height: 36px;
+      border-radius: 8px;
+      background: var(--cyan);
+      color: var(--bg);
+      font-weight: 800;
+      font-size: 16px;
+      box-shadow: var(--glow-cyan);
+    }
+
+    nav { display: grid; gap: 4px; }
+
+    nav a {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      min-height: 40px;
+      padding: 0 14px;
+      border-radius: 8px;
+      color: var(--muted);
+      text-decoration: none;
+      font-size: 14px;
+      font-weight: 600;
+      transition: all 0.15s ease;
+    }
+
+    nav a:hover {
+      background: var(--surface-raised);
+      color: var(--ink);
+    }
+
+    nav a.active {
+      background: var(--cyan-dim);
+      color: var(--cyan);
+      border: 1px solid rgba(0, 229, 255, 0.25);
+    }
+
+    .side-note {
+      margin-top: auto;
+      padding: 14px;
+      border: 1px solid var(--border);
+      border-radius: 8px;
+      background: rgba(15, 23, 42, 0.6);
+      color: var(--muted);
+      font-size: 11px;
+      line-height: 1.55;
+    }
+
+    /* ── Main ── */
+    main {
+      padding: 28px 32px;
+      overflow-y: auto;
+    }
+
+    .topbar {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: 24px;
+      margin-bottom: 28px;
+    }
+
+    h1 {
+      font-size: clamp(28px, 3.5vw, 48px);
+      line-height: 1;
+      font-weight: 800;
+      margin-bottom: 10px;
+      color: #fff;
+    }
+
+    .subhead {
+      color: var(--muted);
+      font-size: 14px;
+      max-width: 600px;
+      line-height: 1.5;
+    }
+
+    .toolbar {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 8px;
+      justify-content: flex-end;
+    }
+
+    .pill {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      min-height: 34px;
+      padding: 0 14px;
+      border: 1px solid var(--border);
+      border-radius: 999px;
+      background: var(--surface);
+      color: var(--ink);
+      font-size: 12px;
+      font-weight: 600;
+      white-space: nowrap;
+    }
+
+    .dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      background: var(--lime);
+      box-shadow: var(--glow-lime);
+      animation: pulse 2s ease-in-out infinite;
+    }
+
+    @keyframes pulse {
+      0%, 100% { opacity: 1; }
+      50% { opacity: 0.5; }
+    }
+
+    .meta-row {
+      display: flex;
+      align-items: center;
+      gap: 20px;
+      margin-bottom: 24px;
+      font-size: 12px;
+      color: var(--muted);
+    }
+
+    .meta-row .live-info {
+      color: var(--lime);
+      font-weight: 600;
+      font-size: 12px;
+    }
+
+    /* ── KPI Grid: 2-column ── */
+    .kpi-grid {
+      display: grid;
+      grid-template-columns: repeat(2, 1fr);
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .kpi-card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      padding: 20px;
+      position: relative;
+      overflow: hidden;
+      transition: border-color 0.2s ease;
+    }
+
+    .kpi-card:hover {
+      border-color: rgba(0, 229, 255, 0.3);
+    }
+
+    .kpi-card::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 2px;
+    }
+
+    .kpi-card.cyan::before { background: var(--cyan); box-shadow: var(--glow-cyan); }
+    .kpi-card.pink::before { background: var(--pink); }
+    .kpi-card.lime::before { background: var(--lime); }
+
+    .kpi-label {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: 14px;
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      color: var(--muted);
+    }
+
+    .kpi-tag {
+      font-size: 9px;
+      font-weight: 700;
+      letter-spacing: 0.1em;
+      padding: 3px 8px;
+      border-radius: 999px;
+    }
+
+    .kpi-tag.real {
+      background: var(--cyan-dim);
+      color: var(--cyan);
+    }
+
+    .kpi-tag.derived {
+      background: var(--pink-dim);
+      color: var(--pink);
+    }
+
+    .kpi-value {
+      font-size: 36px;
+      font-weight: 800;
+      line-height: 1;
+      color: #fff;
+    }
+
+    .kpi-card.cyan .kpi-value { color: var(--cyan); }
+    .kpi-card.lime .kpi-value { color: var(--lime); }
+
+    .kpi-delta {
+      margin-top: 10px;
+      font-size: 12px;
+      font-weight: 600;
+      color: var(--lime);
+    }
+
+    .kpi-delta.warn { color: var(--pink); }
+
+    /* ── Main sections ── */
+    .section {
+      display: grid;
+      grid-template-columns: minmax(0, 1.3fr) minmax(280px, 0.7fr);
+      gap: 14px;
+      margin-bottom: 14px;
+    }
+
+    .card {
+      background: var(--surface);
+      border: 1px solid var(--border);
+      border-radius: 10px;
+    }
+
+    .panel { padding: 22px; }
+
+    .panel-head {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 16px;
+      margin-bottom: 18px;
+    }
+
+    h2 {
+      font-size: 16px;
+      font-weight: 700;
+      color: #fff;
+    }
+
+    .source {
+      color: var(--muted);
+      font-size: 11px;
+      font-weight: 600;
+    }
+
+    /* ── Line chart (SVG) ── */
+    .chart-container {
+      width: 100%;
+      height: 240px;
+      position: relative;
+    }
+
+    .chart-container svg {
+      width: 100%;
+      height: 100%;
+    }
+
+    .chart-grid-line {
+      stroke: var(--border);
+      stroke-width: 1;
+      stroke-dasharray: 4 4;
+    }
+
+    .chart-axis-label {
+      fill: var(--muted);
+      font-size: 10px;
+      font-family: 'Inter', sans-serif;
+    }
+
+    .chart-area {
+      fill: url(#areaGradient);
+    }
+
+    .chart-line {
+      fill: none;
+      stroke: var(--cyan);
+      stroke-width: 2.5;
+      filter: url(#glow);
+    }
+
+    .chart-dot {
+      fill: var(--cyan);
+      filter: url(#glow);
+    }
+
+    /* ── Limit windows: radial gauges ── */
+    .gauges {
+      display: grid;
+      gap: 16px;
+    }
+
+    .gauge-row {
+      display: flex;
+      align-items: center;
+      gap: 16px;
+      padding: 16px;
+      border: 1px solid var(--border);
+      border-radius: 10px;
+      background: var(--surface-raised);
+      transition: border-color 0.2s ease;
+    }
+
+    .gauge-row:hover {
+      border-color: rgba(0, 229, 255, 0.25);
+    }
+
+    .gauge-svg {
+      flex-shrink: 0;
+    }
+
+    .gauge-info { flex: 1; }
+
+    .gauge-title {
+      font-weight: 700;
+      font-size: 14px;
+      color: #fff;
+      margin-bottom: 4px;
+    }
+
+    .gauge-copy {
+      color: var(--muted);
+      font-size: 12px;
+      line-height: 1.45;
+    }
+
+    .gauge-badge {
+      font-size: 10px;
+      font-weight: 700;
+      letter-spacing: 0.06em;
+      padding: 4px 10px;
+      border-radius: 999px;
+      white-space: nowrap;
+    }
+
+    .gauge-badge.watch {
+      background: var(--pink-dim);
+      color: var(--pink);
+    }
+
+    .gauge-badge.ok {
+      background: var(--lime-dim);
+      color: var(--lime);
+    }
+
+    /* ── Table ── */
+    .table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 13px;
+    }
+
+    .table th {
+      color: var(--muted);
+      font-size: 10px;
+      text-align: left;
+      text-transform: uppercase;
+      letter-spacing: 0.08em;
+      padding: 0 0 12px;
+      border-bottom: 1px solid var(--border);
+    }
+
+    .table td {
+      padding: 14px 0;
+      border-bottom: 1px solid var(--border);
+      vertical-align: middle;
+    }
+
+    .table tbody tr {
+      transition: background 0.15s ease;
+    }
+
+    .table tbody tr:hover {
+      background: rgba(0, 229, 255, 0.04);
+    }
+
+    .badge {
+      display: inline-flex;
+      align-items: center;
+      min-height: 24px;
+      padding: 0 10px;
+      border-radius: 999px;
+      font-size: 11px;
+      font-weight: 700;
+    }
+
+    .badge.live {
+      background: var(--cyan-dim);
+      color: var(--cyan);
+    }
+
+    .badge.ok {
+      background: var(--lime-dim);
+      color: var(--lime);
+    }
+
+    .badge.retry {
+      background: rgba(255, 183, 77, 0.15);
+      color: #FFB74D;
+    }
+
+    .badge.unknown {
+      background: var(--cyan-dim);
+      color: var(--cyan);
+    }
+
+    /* ── Model usage bars ── */
+    .model-list {
+      display: grid;
+      gap: 14px;
+    }
+
+    .model-row {
+      display: grid;
+      grid-template-columns: 140px minmax(0, 1fr) 48px;
+      gap: 12px;
+      align-items: center;
+      font-size: 13px;
+    }
+
+    .track {
+      height: 8px;
+      border-radius: 999px;
+      background: var(--border);
+      overflow: hidden;
+    }
+
+    .fill {
+      height: 100%;
+      border-radius: inherit;
+      transition: width 0.5s ease;
+    }
+
+    .fill.cyan { background: var(--cyan); }
+    .fill.pink { background: var(--pink); }
+    .fill.lime { background: var(--lime); }
+    .fill.muted { background: var(--muted); }
+
+    /* ── Responsive ── */
+    @media (max-width: 1100px) {
+      .shell { grid-template-columns: 1fr; }
+      aside { display: none; }
+      .kpi-grid { grid-template-columns: repeat(2, 1fr); }
+      .section { grid-template-columns: 1fr; }
+    }
+
+    @media (max-width: 700px) {
+      main { padding: 16px; }
+      .topbar { display: grid; }
+      .toolbar { justify-content: flex-start; }
+      .kpi-grid { grid-template-columns: 1fr; }
+      .section { grid-template-columns: 1fr; }
+      .model-row { grid-template-columns: 1fr; }
+      .gauge-row { flex-direction: column; align-items: flex-start; }
+    }
+  </style>
+</head>
+<body>
+  <div class="shell">
+    <aside>
+      <div class="brand"><span class="mark">C</span> Codex Metrics</div>
+      <nav aria-label="Dashboard sections">
+        <a class="active" href="#">Overview <span>01</span></a>
+        <a href="#">Tokens <span>02</span></a>
+        <a href="#">Limits <span>03</span></a>
+        <a href="#">Models <span>04</span></a>
+        <a href="#">Sessions <span>05</span></a>
+      </nav>
+      <div class="side-note">
+        Data model: Codex JSONL session events plus OpenAI cost and usage APIs where available. Limit windows come from local Codex rate-limit events.
+      </div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <h1>Codex usage command center</h1>
+          <p class="subhead">Token burn, model mix, rolling limits, session health, and estimated spend in one operator-grade dashboard.</p>
+        </div>
+        <div class="toolbar" aria-label="Filters">
+          <span class="pill"><span class="dot"></span> Live refresh</span>
+          <span class="pill">3s polling</span>
+          <span class="pill">70 files</span>
+          <span class="pill">15821 records</span>
+        </div>
+      </header>
+
+      <div class="meta-row">
+        <span>Generated 2026-05-03 08:07 from local Codex JSONL.</span>
+        <span class="live-info">&#10003; Checked 10:07:32 AM. No new metrics.</span>
+      </div>
+
+      <!-- KPI Grid: 2-column -->
+      <section class="kpi-grid" aria-label="Key metrics">
+        <article class="kpi-card cyan">
+          <div class="kpi-label"><span>Total tokens</span><span class="kpi-tag real">REAL</span></div>
+          <div class="kpi-value">313.3M</div>
+          <div class="kpi-delta">+18.4% vs prior week</div>
+        </article>
+        <article class="kpi-card cyan">
+          <div class="kpi-label"><span>Cached input</span><span class="kpi-tag real">REAL</span></div>
+          <div class="kpi-value">296.6M</div>
+          <div class="kpi-delta">Cached input saved $22.10</div>
+        </article>
+        <article class="kpi-card cyan">
+          <div class="kpi-label"><span>Output tokens</span><span class="kpi-tag real">REAL</span></div>
+          <div class="kpi-value">1.1M</div>
+          <div class="kpi-delta">Output tokens per minute</div>
+        </article>
+        <article class="kpi-card pink">
+          <div class="kpi-label"><span>Avg latency</span><span class="kpi-tag derived">DERIVED</span></div>
+          <div class="kpi-value">10.9s</div>
+          <div class="kpi-delta warn">p95 31.8s</div>
+        </article>
+        <article class="kpi-card lime">
+          <div class="kpi-label"><span>Success rate</span><span class="kpi-tag derived">DERIVED</span></div>
+          <div class="kpi-value">91%</div>
+          <div class="kpi-delta">11 failed tool exits</div>
+        </article>
+        <article class="kpi-card pink">
+          <div class="kpi-label"><span>Throughput</span><span class="kpi-tag derived">DERIVED</span></div>
+          <div class="kpi-value">33.5k/min</div>
+          <div class="kpi-delta">Output tokens per minute</div>
+        </article>
+      </section>
+
+      <!-- Chart + Gauges -->
+      <section class="section">
+        <article class="card panel">
+          <div class="panel-head">
+            <h2>Daily token burn</h2>
+            <span class="source">Input / cached / output</span>
+          </div>
+          <div class="chart-container">
+            <svg viewBox="0 0 600 240" preserveAspectRatio="xMidYMid meet">
+              <defs>
+                <linearGradient id="areaGradient" x1="0" y1="0" x2="0" y2="1">
+                  <stop offset="0%" stop-color="#00E5FF" stop-opacity="0.3"/>
+                  <stop offset="100%" stop-color="#00E5FF" stop-opacity="0.02"/>
+                </linearGradient>
+                <filter id="glow">
+                  <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                  <feMerge>
+                    <feMergeNode in="coloredBlur"/>
+                    <feMergeNode in="SourceGraphic"/>
+                  </feMerge>
+                </filter>
+              </defs>
+
+              <!-- Grid lines -->
+              <line x1="50" y1="30" x2="580" y2="30" class="chart-grid-line"/>
+              <line x1="50" y1="80" x2="580" y2="80" class="chart-grid-line"/>
+              <line x1="50" y1="130" x2="580" y2="130" class="chart-grid-line"/>
+              <line x1="50" y1="180" x2="580" y2="180" class="chart-grid-line"/>
+
+              <!-- Y-axis labels -->
+              <text x="44" y="34" class="chart-axis-label" text-anchor="end">3.0M</text>
+              <text x="44" y="84" class="chart-axis-label" text-anchor="end">2.0M</text>
+              <text x="44" y="134" class="chart-axis-label" text-anchor="end">1.0M</text>
+              <text x="44" y="184" class="chart-axis-label" text-anchor="end">0</text>
+
+              <!-- Base line -->
+              <line x1="50" y1="180" x2="580" y2="180" stroke="#334155" stroke-width="1"/>
+
+              <!-- Area fill -->
+              <path d="M125,136 L210,100 L295,146 L380,66 L465,116 L550,93 L550,180 L125,180 Z" class="chart-area"/>
+
+              <!-- Line -->
+              <polyline
+                points="125,136 210,100 295,146 380,66 465,116 550,93"
+                class="chart-line"
+                stroke-linejoin="round"
+                stroke-linecap="round"
+              />
+
+              <!-- Data points -->
+              <circle cx="125" cy="136" r="4" class="chart-dot"/>
+              <circle cx="210" cy="100" r="4" class="chart-dot"/>
+              <circle cx="295" cy="146" r="4" class="chart-dot"/>
+              <circle cx="380" cy="66" r="4" class="chart-dot"/>
+              <circle cx="465" cy="116" r="4" class="chart-dot"/>
+              <circle cx="550" cy="93" r="4" class="chart-dot"/>
+
+              <!-- X-axis labels -->
+              <text x="125" y="200" class="chart-axis-label" text-anchor="middle">Mon</text>
+              <text x="210" y="200" class="chart-axis-label" text-anchor="middle">Tue</text>
+              <text x="295" y="200" class="chart-axis-label" text-anchor="middle">Wed</text>
+              <text x="380" y="200" class="chart-axis-label" text-anchor="middle">Thu</text>
+              <text x="465" y="200" class="chart-axis-label" text-anchor="middle">Fri</text>
+              <text x="550" y="200" class="chart-axis-label" text-anchor="middle">Sat</text>
+            </svg>
+          </div>
+        </article>
+
+        <article class="card panel">
+          <div class="panel-head">
+            <h2>Limit windows</h2>
+            <span class="source">Codex rate limits</span>
+          </div>
+          <div class="gauges">
+            <!-- 0% gauge - 5h window -->
+            <div class="gauge-row">
+              <svg class="gauge-svg" width="90" height="90" viewBox="0 0 90 90">
+                <defs>
+                  <filter id="glowCyan">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+                <circle cx="45" cy="45" r="36" fill="none" stroke="#334155" stroke-width="7"/>
+                <circle cx="45" cy="45" r="36" fill="none" stroke="#00E5FF" stroke-width="7"
+                  stroke-dasharray="0.5 226" stroke-dashoffset="0"
+                  transform="rotate(-90 45 45)"
+                  filter="url(#glowCyan)"
+                  stroke-linecap="round"/>
+                <text x="45" y="45" text-anchor="middle" dominant-baseline="central"
+                  fill="#64748B" font-size="16" font-weight="800" font-family="Inter, sans-serif">0%</text>
+              </svg>
+              <div class="gauge-info">
+                <div class="gauge-title">5 hour usage</div>
+                <p class="gauge-copy">Primary window resets at 23:38. Current model: gpt-5.5 high.</p>
+              </div>
+              <span class="gauge-badge watch">WATCH</span>
+            </div>
+
+            <!-- 8% gauge - 1w window -->
+            <div class="gauge-row">
+              <svg class="gauge-svg" width="90" height="90" viewBox="0 0 90 90">
+                <defs>
+                  <filter id="glowLime">
+                    <feGaussianBlur stdDeviation="3" result="coloredBlur"/>
+                    <feMerge>
+                      <feMergeNode in="coloredBlur"/>
+                      <feMergeNode in="SourceGraphic"/>
+                    </feMerge>
+                  </filter>
+                </defs>
+                <circle cx="45" cy="45" r="36" fill="none" stroke="#334155" stroke-width="7"/>
+                <!-- 8% of circumference = 0.08 * 226.19 ≈ 18.1 -->
+                <circle cx="45" cy="45" r="36" fill="none" stroke="#39FF14" stroke-width="7"
+                  stroke-dasharray="18.1 208" stroke-dashoffset="0"
+                  transform="rotate(-90 45 45)"
+                  filter="url(#glowLime)"
+                  stroke-linecap="round"/>
+                <text x="45" y="45" text-anchor="middle" dominant-baseline="central"
+                  fill="#39FF14" font-size="16" font-weight="800" font-family="Inter, sans-serif">8%</text>
+              </svg>
+              <div class="gauge-info">
+                <div class="gauge-title">1 week usage</div>
+                <p class="gauge-copy">Secondary window resets Monday morning. Trend is below weekly pace.</p>
+              </div>
+              <span class="gauge-badge ok">OK</span>
+            </div>
+          </div>
+        </article>
+      </section>
+
+      <!-- Table + Model usage -->
+      <section class="section">
+        <article class="card panel">
+          <div class="panel-head">
+            <h2>Recent sessions</h2>
+            <span class="source">JSONL rollouts</span>
+          </div>
+          <table class="table">
+            <thead>
+              <tr>
+                <th>Session</th>
+                <th>Model</th>
+                <th>Tokens</th>
+                <th>Cost</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody>
+              <tr>
+                <td>22:37 codex-metrics</td>
+                <td>gpt-5.5 high</td>
+                <td>592.5k</td>
+                <td>$1.94</td>
+                <td><span class="badge live">live</span></td>
+              </tr>
+              <tr>
+                <td>20:52 portfolio-work</td>
+                <td>gpt-5.4 medium</td>
+                <td>1.8M</td>
+                <td>$5.80</td>
+                <td><span class="badge ok">ok</span></td>
+              </tr>
+              <tr>
+                <td>11:06 app-debug</td>
+                <td>gpt-5.4 mini</td>
+                <td>438k</td>
+                <td>$0.41</td>
+                <td><span class="badge retry">retry</span></td>
+              </tr>
+              <tr>
+                <td>09:21 api-refactor</td>
+                <td>gpt-5.5 high</td>
+                <td>2.1M</td>
+                <td>$6.84</td>
+                <td><span class="badge unknown">unknown</span></td>
+              </tr>
+              <tr>
+                <td>07:45 test-suite</td>
+                <td>gpt-5.4 mini</td>
+                <td>320k</td>
+                <td>$0.30</td>
+                <td><span class="badge ok">ok</span></td>
+              </tr>
+            </tbody>
+          </table>
+        </article>
+
+        <article class="card panel">
+          <div class="panel-head">
+            <h2>Model usage</h2>
+            <span class="source">session meta</span>
+          </div>
+          <div class="model-list">
+            <div class="model-row">
+              <strong>openai model</strong>
+              <div class="track"><div class="fill cyan" style="width: 100%"></div></div>
+              <span>100%</span>
+            </div>
+          </div>
+        </article>
+      </section>
+    </main>
+  </div>
+</body>
+</html>
