@@ -58,7 +58,7 @@ Agent loop format:
     - Switching windows updates all KPIs + sparklines instantly.
     - Empty history shows honest "insufficient data" state.
 
-- [ ] TASK-012: Sparkline health-based color coding
+- [x] TASK-012: Sparkline health-based color coding
   - Color sparkline stroke by latest bucket's severity, not metric name.
   - Per-metric thresholds:
     - Success rate: ≥95% green, 85-94% yellow, <85% red
@@ -75,7 +75,7 @@ Agent loop format:
     - Sparkline color changes dynamically based on current value.
     - Delta badge colors make semantic sense per metric.
 
-- [ ] TASK-013: Polish — units, tooltips, labels
+- [x] TASK-013: Polish — units, tooltips, labels
   - Fix double unit bugs (`34.1kk/min` → `34.1k/min`, `2.5ss` → `2.5s`).
   - Remove x-axis time labels from sparklines (rely on hover tooltip).
   - Add date to sparkline tooltip (`3 May 15:00`).
