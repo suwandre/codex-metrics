@@ -5,6 +5,7 @@ import {
   type HistoryStorage,
   type TimeWindow,
 } from "../history";
+import type { MetricsTimeWindows, MetricsWindowSeries } from "./time-windows";
 import type {
   BurnBarTone,
   CommandCenterData,
@@ -26,6 +27,7 @@ export type GeneratedMetricsFile = {
     ignoredLineCount: number;
   };
   metrics: CodexMetricsAggregation;
+  timeWindows?: MetricsTimeWindows;
 };
 
 const modelTones = ["green", "orange", "blue", "red"] as const satisfies readonly ModelUsageTone[];
@@ -45,6 +47,7 @@ type CommandCenterDataOptions = {
   refreshStatus?: string;
   history?: HistoryStorage;
   window?: TimeWindow;
+  timeWindows?: MetricsTimeWindows;
 };
 
 export function toCommandCenterData(
@@ -136,7 +139,7 @@ export function toCommandCenterData(
       share: Math.round(usage.share * 100),
       tone: modelTones[index % modelTones.length] ?? "green",
     })),
-    kpis: toKpis(metrics, options.history, options.window),
+    kpis: toKpis(metrics, options.history, options.window, options.timeWindows),
     tokenBurn: {
       composition: [
         { label: "input", value: inputTokens, color: "--accent" },
@@ -338,11 +341,18 @@ function toKpis(
   metrics: CodexMetricsAggregation,
   history: HistoryStorage | undefined,
   window: TimeWindow | undefined,
+  timeWindows: MetricsTimeWindows | undefined,
 ): KpiMetric[] {
-  const hasHistory = history && history.snapshots.length >= 2;
-  const aggregated = hasHistory ? aggregateToWindow(window ?? "24h", history) : null;
+  const selectedWindow = window ?? "24h";
+  const generatedWindow = timeWindows?.[selectedWindow];
+  if (generatedWindow) {
+    return buildTimeWindowKpis(generatedWindow);
+  }
 
-  if (aggregated && aggregated.buckets.length >= 2) {
+  const hasHistory = history && history.snapshots.length >= 2;
+  const aggregated = hasHistory ? aggregateToWindow(selectedWindow, history) : null;
+
+  if (hasHistory && aggregated) {
     return buildHistoryKpis(metrics, aggregated);
   }
 
@@ -518,14 +528,112 @@ function buildHistoryKpis(
   ];
 }
 
+function buildTimeWindowKpis(series: MetricsWindowSeries): KpiMetric[] {
+  const current = series.current;
+  const previous = series.previous;
+  const successRate = current.successRate.rate;
+  const errorRate =
+    current.successRate.total > 0
+      ? (current.successRate.failed / current.successRate.total) * 100
+      : 0;
+  const sessions = current.recentSessions;
+  const timestamps = series.buckets.map((bucket) => bucket.label);
+
+  return [
+    kpiFromHistory(
+      "Success Rate",
+      formatPercent(successRate),
+      "successRate",
+      toSparklineFromBuckets(series, "successRate"),
+      timestamps,
+      previous,
+      current,
+      toSparklineLabelsFromBuckets(series, "successRate"),
+    ),
+    kpiFromHistory(
+      "Latency p95",
+      formatDuration(current.latency.p95Ms),
+      "latency",
+      toSparklineFromBuckets(series, "latency"),
+      timestamps,
+      previous,
+      current,
+      toSparklineLabelsFromBuckets(series, "latency"),
+    ),
+    kpiFromHistory(
+      "Throughput",
+      formatCompactNumber(current.throughput.totalTokensPerMinute),
+      "throughput",
+      toSparklineFromBuckets(series, "throughput"),
+      timestamps,
+      previous,
+      current,
+      toSparklineLabelsFromBuckets(series, "throughput"),
+    ),
+    kpiFromHistory(
+      "Active Sessions",
+      String(sessions.length),
+      "activeSessions",
+      toSparklineFromBuckets(series, "activeSessions"),
+      timestamps,
+      previous,
+      current,
+      toSparklineLabelsFromBuckets(series, "activeSessions"),
+    ),
+    kpiFromHistory(
+      "Daily Burn / 95% limit",
+      formatCompactNumber(current.totals.totalTokens.value),
+      "dailyBurn",
+      toSparklineFromBuckets(series, "dailyBurn"),
+      timestamps,
+      previous,
+      current,
+      toSparklineLabelsFromBuckets(series, "dailyBurn"),
+    ),
+    kpiFromHistory(
+      "Rate Limit — weekly / 5h",
+      current.rateLimitWindows[0]
+        ? `${Math.round(current.rateLimitWindows[0].usedPercent)}%`
+        : "0%",
+      "rateLimit",
+      toSparklineFromBuckets(series, "rateLimit"),
+      timestamps,
+      previous,
+      current,
+      toSparklineLabelsFromBuckets(series, "rateLimit"),
+    ),
+    kpiFromHistory(
+      "Current RPM",
+      String(Math.round((current.throughput.totalTokensPerMinute / 1000) * 60)),
+      "rpm",
+      toSparklineFromBuckets(series, "rpm"),
+      timestamps,
+      previous,
+      current,
+      toSparklineLabelsFromBuckets(series, "rpm"),
+    ),
+    kpiFromHistory(
+      "Error Rate (5m)",
+      `${formatCompactNumber(errorRate)}%`,
+      "errorRate",
+      toSparklineFromBuckets(series, "errorRate"),
+      timestamps,
+      previous,
+      current,
+      toSparklineLabelsFromBuckets(series, "errorRate"),
+    ),
+  ];
+}
+
 function kpiFromHistory(
   label: string,
   value: string,
   metricKey: string,
-  sparkline: number[],
+  sparkline: Array<number | null>,
   timestamps: string[],
   previous: CodexMetricsAggregation | null,
   latest: CodexMetricsAggregation,
+  sparklineLabels?: string[],
 ): KpiMetric {
   const currentVal = extractMetricValue(latest, metricKey);
   const prevVal = previous ? extractMetricValue(previous, metricKey) : currentVal;
@@ -534,7 +642,10 @@ function kpiFromHistory(
   let deltaStr: string;
   let direction: "up" | "down" | "neutral";
 
-  if (Math.abs(delta) < 0.001) {
+  if (!previous) {
+    deltaStr = "no previous";
+    direction = "neutral";
+  } else if (Math.abs(delta) < 0.001) {
     deltaStr = "—";
     direction = "neutral";
   } else {
@@ -549,14 +660,6 @@ function kpiFromHistory(
     } else {
       deltaStr = `${sign}${formatCompactNumber(Math.abs(delta))}`;
     }
-  }
-
-  // invert direction for metrics where lower is better
-  if (
-    (metricKey === "latency" || metricKey === "errorRate" || metricKey === "rateLimit") &&
-    direction !== "neutral"
-  ) {
-    direction = direction === "up" ? "down" : "up";
   }
 
   const healthColor = getHealthColor(metricKey, currentVal);
@@ -578,6 +681,8 @@ function kpiFromHistory(
     deltaDirection: direction,
     deltaColor: dColor,
     sparkline,
+    sparklineLabels:
+      sparklineLabels ?? sparkline.map((point) => formatMetricPoint(metricKey, point)),
     timestamps,
     description: kpiDescriptions[label],
   };
@@ -608,10 +713,59 @@ function extractMetricValue(metrics: CodexMetricsAggregation, metric: string): n
   }
 }
 
-export function toSparklineFromHistory(window: AggregatedWindow, metric: string): number[] {
+export function toSparklineFromHistory(
+  window: AggregatedWindow,
+  metric: string,
+): Array<number | null> {
   const values = window.buckets.map((b) => extractMetricValue(b.metrics, metric));
   if (values.length >= 2) return values;
   return values.length === 1 ? [values[0], values[0]] : [0, 0];
+}
+
+function toSparklineFromBuckets(window: MetricsWindowSeries, metric: string): Array<number | null> {
+  const values =
+    metric === "dailyBurn"
+      ? toCumulativeMetricValues(window, metric)
+      : metric === "activeSessions"
+        ? toCumulativeActiveSessions(window)
+        : window.buckets.map((bucket) => extractMetricValue(bucket.metrics, metric));
+  if (values.length >= 2) return values;
+  return values.length === 1 ? [values[0], values[0]] : [0, 0];
+}
+
+function toSparklineLabelsFromBuckets(window: MetricsWindowSeries, metric: string): string[] {
+  return toSparklineFromBuckets(window, metric).map((value, index) => {
+    const bucket = window.buckets[index];
+    if (!bucket) return formatMetricPoint(metric, value);
+
+    if (metric === "successRate" && bucket.metrics.successRate.total === 0) return "no events";
+    if (metric === "errorRate" && bucket.metrics.successRate.total === 0) return "no events";
+    if (metric === "latency" && bucket.metrics.latency.samples === 0) return "no samples";
+    if (metric === "rateLimit" && bucket.metrics.rateLimitWindows.length === 0) return "no sample";
+
+    return formatMetricPoint(metric, value);
+  });
+}
+
+function toCumulativeMetricValues(window: MetricsWindowSeries, metric: string): number[] {
+  let total = 0;
+
+  return window.buckets.map((bucket) => {
+    total += extractMetricValue(bucket.metrics, metric);
+    return total;
+  });
+}
+
+function toCumulativeActiveSessions(window: MetricsWindowSeries): number[] {
+  const sessionIds = new Set<string>();
+
+  return window.buckets.map((bucket) => {
+    for (const session of bucket.metrics.recentSessions) {
+      sessionIds.add(session.sessionId);
+    }
+
+    return sessionIds.size;
+  });
 }
 
 function buildMockKpis(metrics: CodexMetricsAggregation): KpiMetric[] {
@@ -713,10 +867,25 @@ function buildMockKpis(metrics: CodexMetricsAggregation): KpiMetric[] {
       deltaDirection: dir.direction,
       deltaColor: getDeltaColor(key, dir.direction, val),
       sparkline: mockSparklines[key],
+      sparklineLabels: mockSparklines[key].map((point) => formatMetricPoint(key, point)),
       timestamps,
       description: kpiDescriptions[label],
     };
   });
+}
+
+function formatMetricPoint(metricKey: string, value: number | null): string {
+  if (value === null) return "no data";
+
+  if (metricKey === "successRate" || metricKey === "errorRate" || metricKey === "rateLimit") {
+    return `${trimDecimal(value)}%`;
+  }
+
+  if (metricKey === "latency") {
+    return formatDuration(value);
+  }
+
+  return formatCompactNumber(value);
 }
 
 function generateTimestamps(count: number): string[] {

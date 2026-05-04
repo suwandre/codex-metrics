@@ -10,6 +10,8 @@ import type { TimeWindow } from "./features/history/types";
 // - SSE/WebSocket would require persistent server process, connection management, and reconnection logic
 // - For a local dev tool dashboard, the complexity outweighs the ~500ms latency savings per update
 const pollIntervalMs = 1000;
+let currentWindow: TimeWindow = "24h";
+let cleanupSectionTracking: (() => void) | null = null;
 const app = document.querySelector<HTMLDivElement>("#app");
 
 if (!app) {
@@ -19,7 +21,6 @@ if (!app) {
 const appRoot = app;
 let currentGeneratedAt: string | null = null;
 let hasRenderedDashboard = false;
-let currentWindow: TimeWindow = "24h";
 
 appRoot.innerHTML = renderDashboardState({
   title: "Loading metrics",
@@ -51,6 +52,7 @@ async function refreshDashboard({ forceRender }: { forceRender: boolean }) {
         refreshStatus: `Updated ${formatTime(metrics.generatedAt)}. Polling every ${pollIntervalMs / 1000}s.`,
         history,
         window: currentWindow,
+        timeWindows: metrics.timeWindows,
       }),
       currentWindow,
     );
@@ -133,26 +135,7 @@ function setupInteractions() {
     });
   });
 
-  // Sidebar active tracking via IntersectionObserver
-  const sections = document.querySelectorAll(".section");
-  const navLinks = document.querySelectorAll(".nav-link");
-  const observer = new IntersectionObserver(
-    (entries) => {
-      entries.forEach((entry) => {
-        if (entry.isIntersecting) {
-          const id = entry.target.id;
-          navLinks.forEach((l) => {
-            l.classList.remove("active");
-            if (l.getAttribute("href") === `#${id}`) l.classList.add("active");
-          });
-        }
-      });
-    },
-    { rootMargin: "-60px 0px -60% 0px", threshold: 0 },
-  );
-  sections.forEach((s) => {
-    observer.observe(s);
-  });
+  setupSidebarActiveTracking();
 
   // Refresh now button
   const btnRefresh = document.getElementById("btn-refresh");
@@ -176,6 +159,58 @@ function setupInteractions() {
   setupSparklines();
 }
 
+function setupSidebarActiveTracking() {
+  cleanupSectionTracking?.();
+
+  const sections = [...document.querySelectorAll<HTMLElement>(".section")];
+  const navLinks = [...document.querySelectorAll<HTMLAnchorElement>(".nav-link")];
+  const headerOffset = 64;
+  let pendingFrame = 0;
+
+  const setActiveSection = () => {
+    pendingFrame = 0;
+
+    const activeId = getActiveSectionId(sections, headerOffset);
+    if (!activeId) return;
+
+    navLinks.forEach((link) => {
+      link.classList.toggle("active", link.getAttribute("href") === `#${activeId}`);
+    });
+  };
+
+  const requestUpdate = () => {
+    if (pendingFrame !== 0) return;
+    pendingFrame = requestAnimationFrame(setActiveSection);
+  };
+
+  window.addEventListener("scroll", requestUpdate, { passive: true });
+  window.addEventListener("resize", requestUpdate);
+  requestUpdate();
+
+  cleanupSectionTracking = () => {
+    window.removeEventListener("scroll", requestUpdate);
+    window.removeEventListener("resize", requestUpdate);
+    if (pendingFrame !== 0) cancelAnimationFrame(pendingFrame);
+  };
+}
+
+function getActiveSectionId(sections: readonly HTMLElement[], headerOffset: number) {
+  if (sections.length === 0) return null;
+
+  let activeSection = sections[0];
+  let activeDistance = Number.NEGATIVE_INFINITY;
+
+  for (const section of sections) {
+    const distance = section.getBoundingClientRect().top - headerOffset;
+    if (distance > 8 || distance <= activeDistance) continue;
+
+    activeSection = section;
+    activeDistance = distance;
+  }
+
+  return activeSection.id;
+}
+
 // Sparkline hover
 function setupSparklines() {
   document.querySelectorAll(".kpi-sparkline").forEach((container) => {
@@ -186,13 +221,15 @@ function setupSparklines() {
     const tooltip = wrapper.querySelector(".sparkline-tooltip") as HTMLElement | null;
     const pointsData = wrapper.dataset.points;
     const timestampsData = wrapper.dataset.timestamps;
+    const pointValuesData = wrapper.dataset.pointValues;
     const valueLabel = wrapper.dataset.value ?? "";
     const color = wrapper.dataset.color ?? "var(--text-secondary)";
 
     if (!pointsData || !timestampsData || !guide || !dot || !tooltip) return;
 
-    const points: { x: number; y: number }[] = JSON.parse(pointsData);
+    const points: Array<{ x: number; y: number } | null> = JSON.parse(pointsData);
     const timestamps: string[] = JSON.parse(timestampsData);
+    const pointValues: string[] = pointValuesData ? JSON.parse(pointValuesData) : [];
 
     rects.forEach((rect) => {
       rect.addEventListener("mouseenter", (e) => {
@@ -211,7 +248,7 @@ function setupSparklines() {
 
         const valueEl = tooltip.querySelector(".sparkline-tooltip-value") as HTMLElement;
         const timeEl = tooltip.querySelector(".sparkline-tooltip-time") as HTMLElement;
-        if (valueEl) valueEl.textContent = valueLabel;
+        if (valueEl) valueEl.textContent = pointValues[idx] ?? valueLabel;
         if (timeEl) timeEl.textContent = timestamps[idx] ?? "";
 
         // Position tooltip above the point, but flip if near top

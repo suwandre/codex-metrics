@@ -52,21 +52,25 @@ export function getBucketStart(timestampMs: number, window: TimeWindow): number 
 
 export function formatBucketLabel(timestampMs: number, window: TimeWindow): string {
   const date = new Date(timestampMs);
+  const dayPart = date.toLocaleDateString([], { day: "numeric", month: "short" });
 
   if (window === "1h" || window === "24h") {
-    return date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    const timePart = date.toLocaleTimeString([], { hour: "2-digit", minute: "2-digit" });
+    return `${dayPart} ${timePart}`;
   }
 
   if (window === "7d") {
-    return date.toLocaleDateString([], { weekday: "short" });
+    const weekday = date.toLocaleDateString([], { weekday: "short" });
+    return `${weekday} ${dayPart}`;
   }
 
   // 30d and all
-  return date.toLocaleDateString([], { month: "short", day: "numeric" });
+  return dayPart;
 }
 
 function getBucketSize(window: TimeWindow): number {
   if (window === "1h") return fiveMinutesMs;
+  if (window === "24h") return hourMs;
   return dayMs;
 }
 

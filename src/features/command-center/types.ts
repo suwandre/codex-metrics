@@ -60,8 +60,11 @@ export type KpiMetric = {
   color: "success" | "warning" | "accent" | "danger" | "info" | "default";
   delta: string;
   deltaDirection: "up" | "down" | "neutral";
-  sparkline: number[];
-  timestamps?: string[]; // formatted time labels for each sparkline point
+  deltaColor: "success" | "warning" | "danger" | "default";
+  sparkline: Array<number | null>;
+  timestamps?: string[];
+  sparklineLabels?: string[];
+  description?: string;
 };
 
 export type SessionRow = {

@@ -36,32 +36,44 @@ function trimDecimal(value: number) {
 }
 
 export function sparklineSvg(
-  points: number[],
+  points: Array<number | null>,
   color: string,
   width = 120,
   height = 28,
   timestamps: string[] = [],
   metricValue: string = "",
+  pointValues: string[] = [],
 ): string {
   if (points.length === 0) {
-    return `<svg width="100%" height="${height + 12}" viewBox="0 0 ${width} ${height + 12}" preserveAspectRatio="none"><polyline fill="none" stroke="${escapeHtml(color)}" stroke-width="1.5" points="0,${height / 2} ${width},${height / 2}"/></svg>`;
+    return `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><polyline fill="none" stroke="${escapeHtml(color)}" stroke-width="1.5" points="0,${height / 2} ${width},${height / 2}"/></svg>`;
   }
-  const min = Math.min(...points);
-  const max = Math.max(...points);
+  const validPoints = points.filter((point): point is number => point !== null);
+  if (validPoints.length === 0) {
+    return `<svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none"><polyline fill="none" stroke="${escapeHtml(color)}" stroke-width="1.5" points="0,${height / 2} ${width},${height / 2}" opacity="0.35"/></svg>`;
+  }
+
+  const min = Math.min(...validPoints);
+  const max = Math.max(...validPoints);
   const range = max - min || 1;
   const step = width / (points.length - 1 || 1);
 
   const coords = points.map((p, i) => {
+    if (p === null) return null;
+
     const x = Math.round(i * step);
     const y = Math.round(height - ((p - min) / range) * (height - 4) - 2);
     return `${x},${y}`;
   });
 
   const pointObjs = points.map((p, i) => {
+    if (p === null) return null;
+
     const x = Math.round(i * step);
     const y = Math.round(height - ((p - min) / range) * (height - 4) - 2);
     return { x, y };
   });
+
+  const lineSegments = toLineSegments(coords);
 
   const hitWidth = width / points.length;
   const hitRects = points
@@ -71,27 +83,18 @@ export function sparklineSvg(
     })
     .join("");
 
-  const xLabels = [
-    { text: "24h", idx: 0 },
-    { text: "16h", idx: 2 },
-    { text: "8h", idx: 4 },
-    { text: "now", idx: 6 },
-  ];
-  const labelEls = xLabels
-    .map((l) => {
-      const x = Math.round(l.idx * step);
-      return `<text x="${x}" y="${height + 10}" font-size="9" fill="var(--text-secondary)" text-anchor="middle">${l.text}</text>`;
-    })
-    .join("");
-
   return `
-    <div class="kpi-sparkline" data-points="${escapeHtml(JSON.stringify(pointObjs))}" data-timestamps="${escapeHtml(JSON.stringify(timestamps))}" data-value="${escapeHtml(metricValue)}" data-color="${escapeHtml(color)}">
-      <svg width="100%" height="${height + 12}" viewBox="0 0 ${width} ${height + 12}" preserveAspectRatio="none">
-        <polyline fill="none" stroke="${escapeHtml(color)}" stroke-width="1.5" points="${coords.join(" ")}"/>
+    <div class="kpi-sparkline" data-points="${escapeHtml(JSON.stringify(pointObjs))}" data-timestamps="${escapeHtml(JSON.stringify(timestamps))}" data-value="${escapeHtml(metricValue)}" data-point-values="${escapeHtml(JSON.stringify(pointValues))}" data-color="${escapeHtml(color)}">
+      <svg width="100%" height="${height}" viewBox="0 0 ${width} ${height}" preserveAspectRatio="none">
+        ${lineSegments
+          .map(
+            (segment) =>
+              `<polyline fill="none" stroke="${escapeHtml(color)}" stroke-width="1.5" points="${segment.join(" ")}"/>`,
+          )
+          .join("")}
         <line class="sparkline-guide" x1="0" y1="0" x2="0" y2="${height}" stroke="var(--text-secondary)" stroke-dasharray="2,2" opacity="0" />
         <circle class="sparkline-dot" cx="0" cy="0" r="3" fill="${escapeHtml(color)}" opacity="0" />
         ${hitRects}
-        ${labelEls}
       </svg>
       <div class="sparkline-tooltip">
         <div class="sparkline-tooltip-value">${escapeHtml(metricValue)}</div>
@@ -99,6 +102,29 @@ export function sparklineSvg(
       </div>
     </div>
   `;
+}
+
+function toLineSegments(coords: Array<string | null>): string[][] {
+  const segments: string[][] = [];
+  let current: string[] = [];
+
+  for (const coord of coords) {
+    if (coord !== null) {
+      current.push(coord);
+      continue;
+    }
+
+    if (current.length > 0) {
+      segments.push(current);
+      current = [];
+    }
+  }
+
+  if (current.length > 0) {
+    segments.push(current);
+  }
+
+  return segments;
 }
 
 export function statusBadge(status: SessionStatus | LimitWindowStatus): string {

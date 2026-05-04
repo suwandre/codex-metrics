@@ -6,6 +6,7 @@ import {
   resolveLocalCodexSessionsRoot,
 } from "../src/features/codex-sessions";
 import type { GeneratedMetricsFile } from "../src/features/command-center/metrics";
+import { buildMetricsTimeWindows } from "../src/features/command-center/time-windows";
 
 type GenerateMetricsFileOptions = {
   outputPath?: string;
@@ -23,9 +24,10 @@ export async function generateMetricsFile({
 }: GenerateMetricsFileOptions = {}): Promise<GenerateMetricsFileResult> {
   const ingestion = await readLocalCodexSessions({ sessionsRoot });
   const metrics = aggregateCodexMetrics(ingestion.records, { recentSessionLimit: 50 });
+  const generatedAt = new Date().toISOString();
   const file = {
     schemaVersion: 1,
-    generatedAt: new Date().toISOString(),
+    generatedAt,
     ingestion: {
       sessionsRoot,
       fileCount: ingestion.files.length,
@@ -34,6 +36,7 @@ export async function generateMetricsFile({
       ignoredLineCount: ingestion.ignoredLineCount,
     },
     metrics,
+    timeWindows: buildMetricsTimeWindows(ingestion.records, Date.parse(generatedAt)),
   } satisfies GeneratedMetricsFile;
 
   await mkdir(dirname(outputPath), { recursive: true });
